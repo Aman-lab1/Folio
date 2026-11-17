@@ -173,13 +173,32 @@ function constantTimeEquals(a: string, b: string): boolean {
   return diff === 0;
 }
 
-async function legacyHashPin(pin: string): Promise<string> {
-  const salted = `cashbook_v1:${pin}`;
-  if (typeof crypto !== 'undefined' && crypto.subtle) {
-    const encoded = new TextEncoder().encode(salted);
-    const buffer = await crypto.subtle.digest('SHA-256', encoded);
-    return bytesToHex(new Uint8Array(buffer));
+function hasSecureWebCrypto(): boolean {
+  return (
+    typeof crypto !== 'undefined' &&
+    Boolean(crypto.subtle) &&
+    typeof crypto.subtle.importKey === 'function' &&
+    typeof crypto.subtle.deriveBits === 'function' &&
+    typeof crypto.getRandomValues === 'function'
+  );
+}
+
+async function legacySha256HashPin(pin: string): Promise<string | null> {
+  if (
+    typeof crypto === 'undefined' ||
+    !crypto.subtle ||
+    typeof crypto.subtle.digest !== 'function'
+  ) {
+    return null;
   }
+  const salted = `cashbook_v1:${pin}`;
+  const encoded = new TextEncoder().encode(salted);
+  const buffer = await crypto.subtle.digest('SHA-256', encoded);
+  return bytesToHex(new Uint8Array(buffer));
+}
+
+function legacyWeakFallbackPin(pin: string): string {
+  const salted = `cashbook_v1:${pin}`;
   let hash = 0;
   for (let i = 0; i < salted.length; i++) {
     hash = (hash << 5) - hash + salted.charCodeAt(i);
@@ -215,17 +234,15 @@ async function derivePbkdf2Hex(
 }
 
 export async function hashPin(pin: string): Promise<string> {
-  if (
-    typeof crypto !== 'undefined' &&
-    crypto.subtle &&
-    typeof crypto.getRandomValues === 'function'
-  ) {
-    const salt = new Uint8Array(16);
-    crypto.getRandomValues(salt);
-    const derived = await derivePbkdf2Hex(pin, salt, PBKDF2_ITERATIONS);
-    return `pbkdf2_v1$${PBKDF2_ITERATIONS}$${bytesToHex(salt)}$${derived}`;
+  if (!hasSecureWebCrypto()) {
+    throw new Error(
+      'Secure PIN encryption is unavailable in this browser context. Open Folio over HTTPS or on localhost to set or change a PIN.'
+    );
   }
-  return legacyHashPin(pin);
+  const salt = new Uint8Array(16);
+  crypto.getRandomValues(salt);
+  const derived = await derivePbkdf2Hex(pin, salt, PBKDF2_ITERATIONS);
+  return `pbkdf2_v1$${PBKDF2_ITERATIONS}$${bytesToHex(salt)}$${derived}`;
 }
 
 export async function verifyPin(
@@ -246,7 +263,12 @@ export async function verifyPin(
     ) {
       return { valid: false, needsMigration: false };
     }
-    if (typeof crypto === 'undefined' || !crypto.subtle) {
+    if (
+      typeof crypto === 'undefined' ||
+      !crypto.subtle ||
+      typeof crypto.subtle.importKey !== 'function' ||
+      typeof crypto.subtle.deriveBits !== 'function'
+    ) {
       return { valid: false, needsMigration: false };
     }
     const derived = await derivePbkdf2Hex(pin, hexToBytes(saltHex), iterations);
@@ -256,15 +278,23 @@ export async function verifyPin(
     };
   }
 
-  // Legacy SHA-256 or deterministic fallback verification
-  const legacy = await legacyHashPin(pin);
-  const valid = constantTimeEquals(legacy, storedHash);
+  // Legacy weak fallback verification (verification only; never created for new PINs)
+  if (storedHash.startsWith('fb_')) {
+    const valid = constantTimeEquals(legacyWeakFallbackPin(pin), storedHash);
+    return {
+      valid,
+      needsMigration: valid && hasSecureWebCrypto(),
+    };
+  }
+
+  // Legacy SHA-256 verification and lazy PBKDF2 migration when supported
+  const legacySha = await legacySha256HashPin(pin);
+  if (!legacySha) {
+    return { valid: false, needsMigration: false };
+  }
+  const valid = constantTimeEquals(legacySha, storedHash);
   return {
     valid,
-    needsMigration:
-      valid &&
-      typeof crypto !== 'undefined' &&
-      Boolean(crypto.subtle) &&
-      typeof crypto.getRandomValues === 'function',
+    needsMigration: valid && hasSecureWebCrypto(),
   };
 }

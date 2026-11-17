@@ -1,5 +1,6 @@
 import {
   DatePreset,
+  Person,
   Transaction,
   TransactionContext,
   TransactionFilter,
@@ -30,6 +31,12 @@ export interface CategoryBreakdownItem {
   totalPaise: number;
   count: number;
   sharePercent: number;
+}
+
+export interface CategorySelection {
+  type: TransactionType;
+  categoryId: string;
+  categoryName: string;
 }
 
 export interface PersonBreakdownItem {
@@ -100,9 +107,80 @@ export function sortTransactionsNewestFirst(txs: Transaction[]): Transaction[] {
   });
 }
 
+export function normalizePersonName(name: string): string {
+  return name.trim().toLowerCase();
+}
+
+export interface PersonFilterOption {
+  id: string;
+  name: string;
+}
+
+export function buildPersonFilterOptions(
+  people: Person[],
+  transactions: Transaction[]
+): PersonFilterOption[] {
+  const entries: Array<{
+    id: string;
+    name: string;
+    normalizedName: string;
+  }> = [];
+  const byNormalized = new Map<string, number>();
+  const byPersonId = new Map<string, number>();
+
+  for (const p of people) {
+    const trimmed = p.name.trim();
+    const norm = normalizePersonName(trimmed);
+    if (!norm) continue;
+    const existingIdx = byNormalized.get(norm);
+    if (existingIdx !== undefined) {
+      byPersonId.set(p.id, existingIdx);
+    } else {
+      const idx = entries.length;
+      entries.push({ id: p.id, name: trimmed, normalizedName: norm });
+      byNormalized.set(norm, idx);
+      byPersonId.set(p.id, idx);
+    }
+  }
+
+  for (const tx of transactions) {
+    const snap = tx.personNameSnapshot?.trim() ?? '';
+    const norm = snap ? normalizePersonName(snap) : '';
+
+    if (tx.personId && byPersonId.has(tx.personId)) {
+      continue;
+    }
+
+    if (norm && byNormalized.has(norm)) {
+      if (tx.personId) {
+        byPersonId.set(tx.personId, byNormalized.get(norm)!);
+      }
+      continue;
+    }
+
+    if (norm) {
+      const idx = entries.length;
+      entries.push({ id: `name:${norm}`, name: snap, normalizedName: norm });
+      byNormalized.set(norm, idx);
+      if (tx.personId) {
+        byPersonId.set(tx.personId, idx);
+      }
+    } else if (tx.personId) {
+      const idx = entries.length;
+      entries.push({ id: tx.personId, name: tx.personId, normalizedName: '' });
+      byPersonId.set(tx.personId, idx);
+    }
+  }
+
+  return entries
+    .map(({ id, name }) => ({ id, name }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+
 export function filterTransactions(
   transactions: Transaction[],
-  filter: TransactionFilter
+  filter: TransactionFilter,
+  people: Person[] = []
 ): Transaction[] {
   const { from, to } = getDateRangeForPreset(
     filter.datePreset,
@@ -110,6 +188,49 @@ export function filterTransactions(
     filter.dateTo
   );
   const q = filter.search.trim().toLowerCase();
+
+  let targetPersonIds: Set<string> | null = null;
+  let targetNormalizedName: string | null = null;
+
+  if (filter.personId !== 'all' && filter.personId !== 'none') {
+    targetPersonIds = new Set<string>();
+    if (filter.personId.startsWith('name:')) {
+      const rawName = filter.personId.slice('name:'.length);
+      targetNormalizedName = normalizePersonName(rawName) || null;
+    } else {
+      targetPersonIds.add(filter.personId);
+      const savedMatch = people.find((p) => p.id === filter.personId);
+      if (savedMatch) {
+        targetNormalizedName = normalizePersonName(savedMatch.name) || null;
+      } else {
+        const txMatch = transactions.find(
+          (t) => t.personId === filter.personId && t.personNameSnapshot?.trim()
+        );
+        if (txMatch?.personNameSnapshot) {
+          targetNormalizedName = normalizePersonName(txMatch.personNameSnapshot) || null;
+        } else if (!transactions.some((t) => t.personId === filter.personId)) {
+          targetNormalizedName = normalizePersonName(filter.personId) || null;
+        }
+      }
+    }
+
+    if (targetNormalizedName) {
+      for (const p of people) {
+        if (normalizePersonName(p.name) === targetNormalizedName) {
+          targetPersonIds.add(p.id);
+        }
+      }
+      for (const t of transactions) {
+        if (
+          t.personId &&
+          t.personNameSnapshot &&
+          normalizePersonName(t.personNameSnapshot) === targetNormalizedName
+        ) {
+          targetPersonIds.add(t.personId);
+        }
+      }
+    }
+  }
 
   const filtered = transactions.filter((tx) => {
     if (filter.type !== 'all' && tx.type !== filter.type) return false;
@@ -122,7 +243,13 @@ export function filterTransactions(
         return false;
       }
     } else if (filter.personId !== 'all') {
-      if (tx.personId !== filter.personId && tx.personNameSnapshot !== filter.personId) {
+      const matchesId = Boolean(tx.personId && targetPersonIds?.has(tx.personId));
+      const matchesName = Boolean(
+        targetNormalizedName &&
+          tx.personNameSnapshot &&
+          normalizePersonName(tx.personNameSnapshot) === targetNormalizedName
+      );
+      if (!matchesId && !matchesName) {
         return false;
       }
     }
@@ -220,7 +347,7 @@ export function groupByCategory(
 
   for (const tx of scoped) {
     grandTotal += tx.amountPaise;
-    const key = `${tx.type}::${tx.categoryId}::${tx.categoryNameSnapshot}`;
+    const key = JSON.stringify([tx.type, tx.categoryId, tx.categoryNameSnapshot]);
     const existing = map.get(key);
     if (existing) {
       existing.totalPaise += tx.amountPaise;
@@ -243,6 +370,20 @@ export function groupByCategory(
       ...item,
       sharePercent: grandTotal > 0 ? Math.round((item.totalPaise / grandTotal) * 100) : 0,
     }));
+}
+
+export function getTransactionsForCategory(
+  transactions: Transaction[],
+  selection: CategorySelection | null
+): Transaction[] {
+  if (!selection) return [];
+  const matching = transactions.filter(
+    (t) =>
+      t.type === selection.type &&
+      t.categoryId === selection.categoryId &&
+      t.categoryNameSnapshot === selection.categoryName
+  );
+  return sortTransactionsNewestFirst(matching);
 }
 
 export function groupByPerson(transactions: Transaction[]): PersonBreakdownItem[] {
@@ -318,11 +459,14 @@ function escapeCsvCell(value: string, options?: { numeric?: boolean }): string {
   return safe;
 }
 
-function formatPaiseDecimal(paise: number): string {
+export function formatPaiseDecimal(paise: number): string {
   const safe = Math.round(paise);
-  const whole = Math.floor(safe / 100);
-  const frac = Math.abs(safe % 100);
-  return `${whole}.${String(frac).padStart(2, '0')}`;
+  if (safe === 0) return '0.00';
+  const sign = safe < 0 ? '-' : '';
+  const abs = Math.abs(safe);
+  const whole = Math.trunc(abs / 100);
+  const frac = abs % 100;
+  return `${sign}${whole}.${String(frac).padStart(2, '0')}`;
 }
 
 export function transactionsToCsv(transactions: Transaction[]): string {

@@ -2,8 +2,10 @@ import React, { useMemo, useState } from 'react';
 import { ChevronRight, Download, X } from 'lucide-react';
 import { DatePreset, Transaction, TransactionContext } from '../types/cashbook';
 import {
+  CategorySelection,
   computeSummary,
   getDateRangeForPreset,
+  getTransactionsForCategory,
   groupByCategory,
   groupByPerson,
   transactionsToCsv,
@@ -41,7 +43,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
   const [contextFilter, setContextFilter] = useState<'all' | TransactionContext>('all');
   const [reportTab, setReportTab] = useState<ReportTab>('categories');
   const [selectedPersonKey, setSelectedPersonKey] = useState<string | null>(null);
-  const [selectedCategoryKey, setSelectedCategoryKey] = useState<string | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<CategorySelection | null>(null);
   const [showExportConfirm, setShowExportConfirm] = useState(false);
 
   const scoped = useMemo(() => {
@@ -64,18 +66,10 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
     [peopleBreakdown, selectedPersonKey]
   );
 
-  const activeCategoryTxs = useMemo(() => {
-    if (!selectedCategoryKey) return [];
-    const [type, catId, catName] = selectedCategoryKey.split('::');
-    return scoped
-      .filter(
-        (t) =>
-          t.type === type &&
-          t.categoryId === catId &&
-          t.categoryNameSnapshot === catName
-      )
-      .sort((a, b) => b.date.localeCompare(a.date));
-  }, [scoped, selectedCategoryKey]);
+  const activeCategoryTxs = useMemo(
+    () => getTransactionsForCategory(scoped, selectedCategory),
+    [scoped, selectedCategory]
+  );
 
   const handleExportCsv = () => {
     const csv = transactionsToCsv(scoped);
@@ -135,7 +129,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
                 onClick={() => {
                   setPreset(p.id);
                   setSelectedPersonKey(null);
-                  setSelectedCategoryKey(null);
+                  setSelectedCategory(null);
                 }}
                 className={`min-h-[36px] px-3 rounded-lg text-xs font-medium whitespace-nowrap shrink-0 border transition-colors ${
                   active
@@ -243,7 +237,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
               onClick={() => {
                 setReportTab(tab.id);
                 setSelectedPersonKey(null);
-                setSelectedCategoryKey(null);
+                setSelectedCategory(null);
               }}
               className={`min-h-[42px] px-3 text-xs sm:text-sm font-medium border-b-2 whitespace-nowrap shrink-0 transition-colors ${
                 active
@@ -272,14 +266,21 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
             ) : (
               <div className="space-y-3">
                 {spentCategories.map((cat) => {
-                  const catKey = `spent::${cat.categoryId}::${cat.categoryName}`;
-                  const active = selectedCategoryKey === catKey;
+                  const selection: CategorySelection = {
+                    type: 'spent',
+                    categoryId: cat.categoryId,
+                    categoryName: cat.categoryName,
+                  };
+                  const active =
+                    selectedCategory?.type === selection.type &&
+                    selectedCategory?.categoryId === selection.categoryId &&
+                    selectedCategory?.categoryName === selection.categoryName;
                   return (
                     <button
-                      key={catKey}
+                      key={JSON.stringify([cat.type, cat.categoryId, cat.categoryName])}
                       type="button"
                       onClick={() =>
-                        setSelectedCategoryKey(active ? null : catKey)
+                        setSelectedCategory(active ? null : selection)
                       }
                       className={`w-full text-left p-2.5 rounded-xl border transition-colors ${
                         active
@@ -312,15 +313,15 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
           </section>
 
           {/* Received Categories or Drilldown */}
-          {selectedCategoryKey ? (
+          {selectedCategory ? (
             <section className="rounded-2xl border border-white/[0.08] bg-[#121216] overflow-hidden">
               <div className="px-5 py-3.5 border-b border-white/[0.08] flex items-center justify-between">
                 <h2 className="text-sm font-semibold text-zinc-100">
-                  {selectedCategoryKey.split('::')[2]} Entries
+                  {selectedCategory.categoryName} Entries
                 </h2>
                 <button
                   type="button"
-                  onClick={() => setSelectedCategoryKey(null)}
+                  onClick={() => setSelectedCategory(null)}
                   className="min-h-[36px] min-w-[36px] flex items-center justify-center rounded-lg text-zinc-400 hover:text-white"
                 >
                   <X className="w-4 h-4" />
@@ -349,12 +350,16 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
               ) : (
                 <div className="space-y-3">
                   {receivedCategories.map((cat) => {
-                    const catKey = `received::${cat.categoryId}::${cat.categoryName}`;
+                    const selection: CategorySelection = {
+                      type: 'received',
+                      categoryId: cat.categoryId,
+                      categoryName: cat.categoryName,
+                    };
                     return (
                       <button
-                        key={catKey}
+                        key={JSON.stringify([cat.type, cat.categoryId, cat.categoryName])}
                         type="button"
-                        onClick={() => setSelectedCategoryKey(catKey)}
+                        onClick={() => setSelectedCategory(selection)}
                         className="w-full text-left p-2.5 rounded-xl hover:bg-white/[0.03] transition-colors"
                       >
                         <div className="flex items-center justify-between text-xs mb-1.5">

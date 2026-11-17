@@ -23,7 +23,7 @@ import {
   TransactionContext,
   TransactionType,
 } from '../types/cashbook';
-import { hashPin } from '../utils/currency';
+import { hashPin, verifyPin } from '../utils/currency';
 import { ConfirmDialog, ConfirmDialogSecondaryAction } from './ConfirmDialog';
 import { PWAInstallButton } from './PWAInstallButton';
 
@@ -60,7 +60,7 @@ interface SettingsViewProps {
   ) => Promise<{ importedTxCount: number; skippedDuplicates: number; profileName: string }>;
   onExportAllCsv: () => void;
   onLogOut: () => void;
-  onResetAppData: () => Promise<void>;
+  onResetProfileData: (profileId: string) => Promise<void>;
 }
 
 export const SettingsView: React.FC<SettingsViewProps> = ({
@@ -86,10 +86,15 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   onRestoreJsonBackup,
   onExportAllCsv,
   onLogOut,
-  onResetAppData,
+  onResetProfileData,
 }) => {
   const [profileName, setProfileName] = useState(activeProfile.name);
+  const [currentPinInput, setCurrentPinInput] = useState('');
   const [pinInput, setPinInput] = useState('');
+  const [pinError, setPinError] = useState('');
+  const [isPinBusy, setIsPinBusy] = useState(false);
+  const [removePinInput, setRemovePinInput] = useState('');
+  const [removePinError, setRemovePinError] = useState('');
   const [newProfileName, setNewProfileName] = useState('');
   const [newProfilePin, setNewProfilePin] = useState('');
 
@@ -119,6 +124,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       }
     | { kind: 'delete_category_used'; category: Category; usageCount: number }
     | { kind: 'delete_category_unused'; category: Category }
+    | { kind: 'remove_pin' }
     | { kind: 'logout' }
     | { kind: 'reset_step1' }
     | { kind: 'reset_step2' }
@@ -159,31 +165,59 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
   const handleSetPin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!/^\d{4}$/.test(pinInput)) {
-      notify('Enter a 4-digit PIN.', 'error');
+    if (isPinBusy) return;
+    setPinError('');
+
+    const hasExistingPin = Boolean(activeProfile.pinHash);
+    if (hasExistingPin && !/^\d{4}$/.test(currentPinInput)) {
+      const msg = 'Enter your current 4-digit PIN.';
+      setPinError(msg);
+      notify(msg, 'error');
       return;
     }
+
+    if (!/^\d{4}$/.test(pinInput)) {
+      const msg = hasExistingPin ? 'Enter a new 4-digit PIN.' : 'Enter a 4-digit PIN.';
+      setPinError(msg);
+      notify(msg, 'error');
+      return;
+    }
+
     try {
+      setIsPinBusy(true);
+      if (hasExistingPin && activeProfile.pinHash) {
+        const verification = await verifyPin(currentPinInput, activeProfile.pinHash);
+        if (!verification.valid) {
+          const msg = 'Current PIN is incorrect.';
+          setPinError(msg);
+          notify(msg, 'error');
+          return;
+        }
+      }
+
       const pinHash = await hashPin(pinInput);
       await onUpdateProfile({
         ...activeProfile,
         pinHash,
         autoLockMinutes: activeProfile.autoLockMinutes ?? 5,
       });
+      setCurrentPinInput('');
       setPinInput('');
-      notify('4-digit PIN lock saved.');
+      setPinError('');
+      notify(hasExistingPin ? '4-digit PIN lock updated.' : '4-digit PIN lock saved.');
     } catch (err) {
-      notify(err instanceof Error ? err.message : 'Unable to save PIN.', 'error');
+      const msg = err instanceof Error ? err.message : 'Unable to save PIN.';
+      setPinError(msg);
+      notify(msg, 'error');
+    } finally {
+      setIsPinBusy(false);
     }
   };
 
-  const handleRemovePin = async () => {
-    try {
-      await onUpdateProfile({ ...activeProfile, pinHash: null });
-      notify('PIN lock removed.');
-    } catch (err) {
-      notify(err instanceof Error ? err.message : 'Unable to remove PIN.', 'error');
-    }
+  const handleRequestRemovePin = () => {
+    setRemovePinInput('');
+    setRemovePinError('');
+    setPendingAction({ kind: 'remove_pin' });
   };
 
   const handleAutoLockChange = async (minutes: number) => {
@@ -342,7 +376,30 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
     try {
       setIsProcessing(true);
-      if (pendingAction.kind === 'download_json') {
+      if (pendingAction.kind === 'remove_pin') {
+        if (!activeProfile.pinHash) {
+          setPendingAction(null);
+          return;
+        }
+        if (!/^\d{4}$/.test(removePinInput)) {
+          setRemovePinError('Enter your current 4-digit PIN.');
+          return;
+        }
+        const verification = await verifyPin(removePinInput, activeProfile.pinHash);
+        if (!verification.valid) {
+          setRemovePinError('Incorrect current PIN. PIN lock was not removed.');
+          return;
+        }
+        await onUpdateProfile({ ...activeProfile, pinHash: null });
+        setRemovePinInput('');
+        setRemovePinError('');
+        setCurrentPinInput('');
+        setPinInput('');
+        setPinError('');
+        notify('PIN lock removed.');
+        setPendingAction(null);
+        return;
+      } else if (pendingAction.kind === 'download_json') {
         await onDownloadJsonBackup();
       } else if (pendingAction.kind === 'import_json') {
         const res = await onRestoreJsonBackup(pendingAction.file, pendingAction.mode);
@@ -358,13 +415,18 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       ) {
         await onDeleteCategory(pendingAction.category.id);
       } else if (pendingAction.kind === 'reset_step2') {
-        await onResetAppData();
+        await onResetProfileData(activeProfile.id);
       } else if (pendingAction.kind === 'delete_profile') {
         await onDeleteProfile(activeProfile.id);
       }
       setPendingAction(null);
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Unable to complete action.';
+      if (pendingAction.kind === 'remove_pin') {
+        setRemovePinError(msg);
+        notify(msg, 'error');
+        return;
+      }
       if (pendingAction.kind === 'import_json') {
         setRestoreError(msg);
       }
@@ -493,6 +555,42 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           confirmLabel: 'Delete Category',
           variant: 'destructive',
         };
+      case 'remove_pin':
+        return {
+          title: 'Remove PIN Lock?',
+          message: 'Enter your current 4-digit PIN to disable PIN lock for this profile.',
+          confirmLabel: 'Remove PIN',
+          variant: 'destructive',
+          children: (
+            <div className="space-y-2">
+              <label
+                htmlFor="remove-pin-input"
+                className="block text-xs font-medium text-zinc-400"
+              >
+                Current 4-Digit PIN
+              </label>
+              <input
+                id="remove-pin-input"
+                type="password"
+                inputMode="numeric"
+                maxLength={4}
+                autoFocus
+                value={removePinInput}
+                onChange={(e) => {
+                  setRemovePinInput(e.target.value.replace(/\D/g, '').slice(0, 4));
+                  if (removePinError) setRemovePinError('');
+                }}
+                placeholder="Enter current 4-digit PIN"
+                className="w-full min-h-[44px] rounded-xl border border-white/[0.12] bg-[#18181D] px-3.5 font-mono-num text-sm tracking-widest text-zinc-100 placeholder:font-sans placeholder:tracking-normal placeholder:text-zinc-500 focus:outline-none focus:border-zinc-400"
+              />
+              {removePinError && (
+                <p className="text-xs font-medium text-rose-400" role="alert">
+                  {removePinError}
+                </p>
+              )}
+            </div>
+          ),
+        };
       case 'logout':
         return {
           title: 'Log Out?',
@@ -503,18 +601,16 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         };
       case 'reset_step1':
         return {
-          title: 'Reset All App Data?',
-          message:
-            'This action will permanently delete all locally stored profiles, transactions, categories, saved people and application settings. This action cannot be undone.',
-          confirmLabel: 'Reset Everything',
+          title: `Delete Data for "${activeProfile.name}"?`,
+          message: `This will permanently delete all transactions, categories, and saved people stored under "${activeProfile.name}". This profile record, its PIN lock, and all other profiles on this device will remain untouched.`,
+          confirmLabel: 'Continue',
           variant: 'destructive',
         };
       case 'reset_step2':
         return {
-          title: 'Confirm Final Reset?',
-          message:
-            'Please confirm a second time that you want to permanently erase all local profiles, transactions, categories, saved people and settings from this device.',
-          confirmLabel: 'Permanently Delete All',
+          title: 'Confirm Permanent Deletion?',
+          message: `Please confirm a second time that you want to permanently erase all transactions, categories, and saved people for "${activeProfile.name}". Other profiles and their backups will not be affected.`,
+          confirmLabel: 'Delete Profile Data',
           variant: 'destructive',
         };
       case 'delete_profile':
@@ -613,7 +709,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               {activeProfile.pinHash && (
                 <button
                   type="button"
-                  onClick={handleRemovePin}
+                  onClick={handleRequestRemovePin}
                   className="text-xs font-medium text-rose-400 hover:text-rose-300 flex items-center gap-1"
                 >
                   <Unlock className="w-3.5 h-3.5" />
@@ -622,24 +718,53 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               )}
             </div>
 
-            <form onSubmit={handleSetPin} className="flex gap-2">
-              <input
-                type="password"
-                inputMode="numeric"
-                maxLength={4}
-                value={pinInput}
-                onChange={(e) =>
-                  setPinInput(e.target.value.replace(/\D/g, '').slice(0, 4))
-                }
-                placeholder={activeProfile.pinHash ? 'Enter new 4-digit PIN' : 'Set 4-digit PIN'}
-                className="flex-1 min-h-[42px] rounded-xl border border-white/[0.1] bg-[#18181D] px-3.5 font-mono-num text-sm tracking-widest text-zinc-100 placeholder:font-sans placeholder:tracking-normal placeholder:text-zinc-500"
-              />
-              <button
-                type="submit"
-                className="min-h-[42px] px-4 rounded-xl border border-white/[0.12] bg-[#18181D] text-xs font-medium text-zinc-100 hover:bg-zinc-800 whitespace-nowrap shrink-0"
-              >
-                {activeProfile.pinHash ? 'Change PIN' : 'Enable PIN'}
-              </button>
+            <form onSubmit={handleSetPin} className="space-y-2.5">
+              {activeProfile.pinHash && (
+                <input
+                  type="password"
+                  inputMode="numeric"
+                  maxLength={4}
+                  aria-label="Current 4-digit PIN"
+                  value={currentPinInput}
+                  onChange={(e) => {
+                    setCurrentPinInput(e.target.value.replace(/\D/g, '').slice(0, 4));
+                    if (pinError) setPinError('');
+                  }}
+                  placeholder="Enter current 4-digit PIN"
+                  className="w-full min-h-[42px] rounded-xl border border-white/[0.1] bg-[#18181D] px-3.5 font-mono-num text-sm tracking-widest text-zinc-100 placeholder:font-sans placeholder:tracking-normal placeholder:text-zinc-500 focus:outline-none focus:border-zinc-400"
+                />
+              )}
+              <div className="flex gap-2">
+                <input
+                  type="password"
+                  inputMode="numeric"
+                  maxLength={4}
+                  aria-label={activeProfile.pinHash ? 'New 4-digit PIN' : 'Set 4-digit PIN'}
+                  value={pinInput}
+                  onChange={(e) => {
+                    setPinInput(e.target.value.replace(/\D/g, '').slice(0, 4));
+                    if (pinError) setPinError('');
+                  }}
+                  placeholder={activeProfile.pinHash ? 'Enter new 4-digit PIN' : 'Set 4-digit PIN'}
+                  className="flex-1 min-h-[42px] rounded-xl border border-white/[0.1] bg-[#18181D] px-3.5 font-mono-num text-sm tracking-widest text-zinc-100 placeholder:font-sans placeholder:tracking-normal placeholder:text-zinc-500 focus:outline-none focus:border-zinc-400"
+                />
+                <button
+                  type="submit"
+                  disabled={isPinBusy}
+                  className="min-h-[42px] px-4 rounded-xl border border-white/[0.12] bg-[#18181D] text-xs font-medium text-zinc-100 hover:bg-zinc-800 whitespace-nowrap shrink-0 disabled:opacity-50"
+                >
+                  {isPinBusy
+                    ? 'Verifying...'
+                    : activeProfile.pinHash
+                      ? 'Change PIN'
+                      : 'Enable PIN'}
+                </button>
+              </div>
+              {pinError && (
+                <p className="text-xs font-medium text-rose-400" role="alert">
+                  {pinError}
+                </p>
+              )}
             </form>
 
             {activeProfile.pinHash && (
@@ -1062,12 +1187,12 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         </section>
       </div>
 
-      {/* Dedicated Reset App Data Section */}
+      {/* Dedicated Delete Active Profile Data Section */}
       <section className="rounded-2xl border border-rose-500/20 bg-[#121216] p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="space-y-1 max-w-2xl">
-          <h2 className="text-sm font-semibold text-zinc-100">Reset App Data</h2>
+          <h2 className="text-sm font-semibold text-zinc-100">Delete App Data</h2>
           <p className="text-xs text-zinc-400 leading-relaxed">
-            Permanently delete all locally stored profiles, PIN locks, transactions, custom and default categories, and saved people on this device to start fresh. Unrelated browser data is not affected.
+            Permanently delete all transactions, custom and default categories, and saved people for &ldquo;{activeProfile.name}&rdquo;. This profile record, its PIN lock, and all other profiles remain unaffected.
           </p>
         </div>
         <button
@@ -1075,7 +1200,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           onClick={() => setPendingAction({ kind: 'reset_step1' })}
           className="min-h-[44px] px-4 rounded-xl border border-rose-500/35 bg-rose-500/10 text-xs font-semibold text-rose-300 hover:bg-rose-500/20 transition-colors whitespace-nowrap shrink-0 self-start sm:self-center"
         >
-          Reset App Data
+          Delete App Data
         </button>
       </section>
 

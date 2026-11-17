@@ -8,6 +8,7 @@ import {
   TransactionFilter,
 } from '../types/cashbook';
 import {
+  buildPersonFilterOptions,
   computeSummary,
   filterTransactions,
   groupByDate,
@@ -58,8 +59,8 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
   const [showExportConfirm, setShowExportConfirm] = useState(false);
 
   const filtered = useMemo(
-    () => filterTransactions(transactions, filter),
-    [transactions, filter]
+    () => filterTransactions(transactions, filter, people),
+    [transactions, filter, people]
   );
 
   const summary = useMemo(() => computeSummary(filtered), [filtered]);
@@ -76,22 +77,11 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
     return count;
   }, [filter]);
 
-  // Unique person options from saved people + snapshots in transactions
-  const personOptions = useMemo(() => {
-    const map = new Map<string, { id: string; name: string }>();
-    for (const p of people) {
-      map.set(p.id, { id: p.id, name: p.name });
-    }
-    for (const tx of transactions) {
-      if (tx.personNameSnapshot) {
-        const key = tx.personId || tx.personNameSnapshot;
-        if (!map.has(key)) {
-          map.set(key, { id: key, name: tx.personNameSnapshot });
-        }
-      }
-    }
-    return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
-  }, [people, transactions]);
+  // Unique person options from saved people + snapshots in transactions (deduplicated by normalized name)
+  const personOptions = useMemo(
+    () => buildPersonFilterOptions(people, transactions),
+    [people, transactions]
+  );
 
   // Category options including archived categories and historical deleted category snapshots
   const categoryOptions = useMemo(() => {

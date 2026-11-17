@@ -12,7 +12,7 @@ import {
   getProfiles,
   getTransactions,
   renameCategory,
-  resetAllAppData,
+  resetProfileData,
   restoreBackupPayload,
   saveCategory,
   savePerson,
@@ -45,6 +45,15 @@ import { PinLockScreen } from './components/PinLockScreen';
 import { OfflineIndicator } from './components/OfflineIndicator';
 
 const LAST_PROFILE_KEY = 'cashbook_last_profile_id';
+export const MAX_BACKUP_FILE_BYTES = 25 * 1024 * 1024;
+
+export function assertBackupFileWithinLimit(file: Pick<File, 'size'>): void {
+  if (file.size > MAX_BACKUP_FILE_BYTES) {
+    throw new Error(
+      'Backup file is too large (maximum supported size is 25 MB).'
+    );
+  }
+}
 
 export default function App() {
   const [isBooting, setIsBooting] = useState(true);
@@ -67,6 +76,7 @@ export default function App() {
     null
   );
   const lastActivityRef = useRef<number>(Date.now());
+  const profileLoadSeqRef = useRef(0);
 
   const showToast = useCallback((text: string, tone: 'success' | 'error' = 'success') => {
     setToast({ text, tone });
@@ -75,24 +85,30 @@ export default function App() {
     }, 3200);
   }, []);
 
-  const loadProfileData = useCallback(async (profileId: string) => {
+  const loadProfileData = useCallback(async (profileId: string): Promise<boolean> => {
+    const requestId = ++profileLoadSeqRef.current;
     const [cats, ppl, txs] = await Promise.all([
       getCategories(profileId),
       getPeople(profileId),
       getTransactions(profileId),
     ]);
+    if (profileLoadSeqRef.current !== requestId) {
+      return false;
+    }
     setCategories(cats);
     setPeople(ppl);
     setTransactions(txs);
+    return true;
   }, []);
 
   // Initial IndexedDB hydration
   useEffect(() => {
     let mounted = true;
+    const bootSeq = ++profileLoadSeqRef.current;
     (async () => {
       try {
         const list = await getProfiles();
-        if (!mounted) return;
+        if (!mounted || profileLoadSeqRef.current !== bootSeq) return;
         setProfiles(list);
 
         if (list.length > 0) {
@@ -101,8 +117,9 @@ export default function App() {
           setSelectedProfileId(initial.id);
           localStorage.setItem(LAST_PROFILE_KEY, initial.id);
           if (!initial.pinHash) {
+            const loaded = await loadProfileData(initial.id);
+            if (!mounted || !loaded) return;
             setUnlockedProfileId(initial.id);
-            await loadProfileData(initial.id);
           }
         }
       } catch (err) {
@@ -119,8 +136,18 @@ export default function App() {
 
     return () => {
       mounted = false;
+      profileLoadSeqRef.current += 1;
     };
   }, [loadProfileData]);
+
+  const lockSession = useCallback(() => {
+    profileLoadSeqRef.current += 1;
+    // Lock session without discarding quickEntryDraft or isEntryModalOpen
+    setUnlockedProfileId(null);
+    setCategories([]);
+    setPeople([]);
+    setTransactions([]);
+  }, []);
 
   const activeProfile =
     profiles.find((p) => p.id === selectedProfileId) ?? null;
@@ -145,8 +172,7 @@ export default function App() {
 
     const checkInactivity = () => {
       if (Date.now() - lastActivityRef.current >= timeoutMs) {
-        // Lock session without discarding quickEntryDraft or isEntryModalOpen
-        setUnlockedProfileId(null);
+        lockSession();
       }
     };
 
@@ -174,14 +200,16 @@ export default function App() {
       document.removeEventListener('visibilitychange', handleVisibility);
       window.clearInterval(intervalId);
     };
-  }, [isUnlocked, activeProfile]);
+  }, [isUnlocked, activeProfile, lockSession]);
 
   const handleSelectProfile = useCallback(
     async (profileId: string) => {
+      const selectSeq = ++profileLoadSeqRef.current;
+      setUnlockedProfileId(null);
+      setCategories([]);
+      setPeople([]);
+      setTransactions([]);
       if (profileId !== selectedProfileId) {
-        setCategories([]);
-        setPeople([]);
-        setTransactions([]);
         setIsEntryModalOpen(false);
         setEditingTransaction(null);
         setQuickEntryDraft(null);
@@ -191,23 +219,34 @@ export default function App() {
       localStorage.setItem(LAST_PROFILE_KEY, profileId);
       const target = profiles.find((p) => p.id === profileId);
       if (target && !target.pinHash) {
-        setUnlockedProfileId(target.id);
-        await loadProfileData(target.id);
-      } else {
-        setUnlockedProfileId(null);
+        try {
+          const loaded = await loadProfileData(target.id);
+          if (!loaded || profileLoadSeqRef.current < selectSeq) return;
+          lastActivityRef.current = Date.now();
+          setUnlockedProfileId(target.id);
+        } catch (err) {
+          if (profileLoadSeqRef.current >= selectSeq) {
+            showToast(
+              err instanceof Error ? err.message : 'Unable to load profile data.',
+              'error'
+            );
+          }
+        }
       }
     },
-    [profiles, selectedProfileId, loadProfileData]
+    [profiles, selectedProfileId, loadProfileData, showToast]
   );
 
   const handleUnlock = useCallback(
     async (profileId: string, upgradedPinHash?: string) => {
+      const unlockSeq = ++profileLoadSeqRef.current;
       if (upgradedPinHash) {
         const target = profiles.find((p) => p.id === profileId);
         if (target) {
           const migrated: Profile = { ...target, pinHash: upgradedPinHash };
           try {
             await updateProfile(migrated);
+            if (profileLoadSeqRef.current !== unlockSeq) return;
             setProfiles((prev) =>
               prev.map((p) => (p.id === profileId ? migrated : p))
             );
@@ -216,28 +255,34 @@ export default function App() {
           }
         }
       }
+      if (profileLoadSeqRef.current !== unlockSeq) return;
+      const loaded = await loadProfileData(profileId);
+      if (!loaded) return;
       lastActivityRef.current = Date.now();
-      setUnlockedProfileId(profileId);
       setSelectedProfileId(profileId);
+      setUnlockedProfileId(profileId);
       localStorage.setItem(LAST_PROFILE_KEY, profileId);
-      await loadProfileData(profileId);
     },
     [profiles, loadProfileData]
   );
 
   const handleCreateProfile = useCallback(
     async (name: string, pin: string | null) => {
+      const createSeq = ++profileLoadSeqRef.current;
       const created = await createProfile(name, pin);
+      if (profileLoadSeqRef.current !== createSeq) return;
       const updatedList = await getProfiles();
+      if (profileLoadSeqRef.current !== createSeq) return;
       setProfiles(updatedList);
       setIsEntryModalOpen(false);
       setEditingTransaction(null);
       setQuickEntryDraft(null);
       setSelectedProfileId(created.id);
       localStorage.setItem(LAST_PROFILE_KEY, created.id);
+      const loaded = await loadProfileData(created.id);
+      if (!loaded) return;
       lastActivityRef.current = Date.now();
       setUnlockedProfileId(created.id);
-      await loadProfileData(created.id);
       showToast(`Folio "${created.name}" ready`);
     },
     [loadProfileData, showToast]
@@ -254,31 +299,31 @@ export default function App() {
 
   const handleDeleteProfile = useCallback(
     async (profileId: string) => {
+      const deleteSeq = ++profileLoadSeqRef.current;
+      setUnlockedProfileId(null);
+      setCategories([]);
+      setPeople([]);
+      setTransactions([]);
       await deleteProfile(profileId);
+      if (profileLoadSeqRef.current !== deleteSeq) return;
       setIsEntryModalOpen(false);
       setEditingTransaction(null);
       setQuickEntryDraft(null);
       const remaining = await getProfiles();
+      if (profileLoadSeqRef.current !== deleteSeq) return;
       setProfiles(remaining);
       if (remaining.length > 0) {
         const next = remaining[0];
         setSelectedProfileId(next.id);
         localStorage.setItem(LAST_PROFILE_KEY, next.id);
         if (!next.pinHash) {
+          const loaded = await loadProfileData(next.id);
+          if (!loaded) return;
+          lastActivityRef.current = Date.now();
           setUnlockedProfileId(next.id);
-          await loadProfileData(next.id);
-        } else {
-          setUnlockedProfileId(null);
-          setCategories([]);
-          setPeople([]);
-          setTransactions([]);
         }
       } else {
         setSelectedProfileId(null);
-        setUnlockedProfileId(null);
-        setCategories([]);
-        setPeople([]);
-        setTransactions([]);
         localStorage.removeItem(LAST_PROFILE_KEY);
       }
       setActiveTab('home');
@@ -288,6 +333,7 @@ export default function App() {
   );
 
   const handleLogOut = useCallback(() => {
+    profileLoadSeqRef.current += 1;
     setUnlockedProfileId(null);
     setSelectedProfileId(null);
     setCategories([]);
@@ -301,26 +347,24 @@ export default function App() {
     showToast('Logged out');
   }, [showToast]);
 
-  const handleResetAppData = useCallback(async () => {
-    await resetAllAppData();
-    for (let i = localStorage.length - 1; i >= 0; i--) {
-      const key = localStorage.key(i);
-      if (key && key.startsWith('cashbook_')) {
-        localStorage.removeItem(key);
+  const handleResetProfileData = useCallback(
+    async (profileId: string) => {
+      if (!activeProfile || activeProfile.id !== profileId) {
+        throw new Error('Active profile mismatch. Cannot delete profile data.');
       }
-    }
-    setProfiles([]);
-    setSelectedProfileId(null);
-    setUnlockedProfileId(null);
-    setCategories([]);
-    setPeople([]);
-    setTransactions([]);
-    setIsEntryModalOpen(false);
-    setEditingTransaction(null);
-    setQuickEntryDraft(null);
-    setActiveTab('home');
-    showToast('All local app data cleared');
-  }, [showToast]);
+      const resetSeq = ++profileLoadSeqRef.current;
+      await resetProfileData(profileId);
+      if (profileLoadSeqRef.current !== resetSeq) return;
+      setIsEntryModalOpen(false);
+      setEditingTransaction(null);
+      setQuickEntryDraft(null);
+      setActiveTab('home');
+      const loaded = await loadProfileData(profileId);
+      if (!loaded) return;
+      showToast(`Deleted financial data for "${activeProfile.name}"`);
+    },
+    [activeProfile, loadProfileData, showToast]
+  );
 
   const handleCreateCategory = useCallback(
     async (
@@ -389,7 +433,7 @@ export default function App() {
   const handleDeleteCategory = useCallback(
     async (categoryId: string) => {
       if (!activeProfile) return;
-      await deleteCategory(categoryId);
+      await deleteCategory(categoryId, activeProfile.id);
       const cats = await getCategories(activeProfile.id);
       setCategories(cats);
       showToast('Category removed');
@@ -421,7 +465,7 @@ export default function App() {
   const handleDeletePerson = useCallback(
     async (personId: string) => {
       if (!activeProfile) return;
-      await deletePerson(personId);
+      await deletePerson(personId, activeProfile.id);
       const ppl = await getPeople(activeProfile.id);
       setPeople(ppl);
       showToast('Person removed');
@@ -475,6 +519,7 @@ export default function App() {
       file: File,
       mode: 'new_profile' | 'merge_into_active'
     ): Promise<BackupPreview> => {
+      assertBackupFileWithinLimit(file);
       const text = await file.text();
       let parsed: unknown;
       try {
@@ -493,6 +538,7 @@ export default function App() {
 
   const handleRestoreJsonBackup = useCallback(
     async (file: File, mode: 'new_profile' | 'merge_into_active') => {
+      assertBackupFileWithinLimit(file);
       const text = await file.text();
       let parsed: unknown;
       try {
@@ -500,21 +546,43 @@ export default function App() {
       } catch {
         throw new Error('Backup file is not valid JSON.');
       }
+      const restoreSeq = ++profileLoadSeqRef.current;
       const result = await restoreBackupPayload(
         parsed,
         mode,
         activeProfile?.id
       );
+      if (profileLoadSeqRef.current !== restoreSeq) {
+        return {
+          importedTxCount: result.importedTxCount,
+          skippedDuplicates: result.skippedDuplicates,
+          profileName: result.profile.name,
+        };
+      }
       const list = await getProfiles();
+      if (profileLoadSeqRef.current !== restoreSeq) {
+        return {
+          importedTxCount: result.importedTxCount,
+          skippedDuplicates: result.skippedDuplicates,
+          profileName: result.profile.name,
+        };
+      }
       setProfiles(list);
       setIsEntryModalOpen(false);
       setEditingTransaction(null);
       setQuickEntryDraft(null);
       setSelectedProfileId(result.profile.id);
       localStorage.setItem(LAST_PROFILE_KEY, result.profile.id);
+      const loaded = await loadProfileData(result.profile.id);
+      if (!loaded) {
+        return {
+          importedTxCount: result.importedTxCount,
+          skippedDuplicates: result.skippedDuplicates,
+          profileName: result.profile.name,
+        };
+      }
       lastActivityRef.current = Date.now();
       setUnlockedProfileId(result.profile.id);
-      await loadProfileData(result.profile.id);
       showToast(
         `Restored ${result.importedTxCount} entries${
           result.skippedDuplicates > 0
@@ -601,7 +669,7 @@ export default function App() {
         }}
         onLockOrSwitch={() => {
           if (activeProfile.pinHash) {
-            setUnlockedProfileId(null);
+            lockSession();
           } else {
             setActiveTab('settings');
           }
@@ -664,7 +732,7 @@ export default function App() {
             onUpdateProfile={handleUpdateProfile}
             onCreateProfile={handleCreateProfile}
             onSwitchProfile={handleSelectProfile}
-            onLockNow={() => setUnlockedProfileId(null)}
+            onLockNow={lockSession}
             onDeleteProfile={handleDeleteProfile}
             onCreateCategory={handleCreateCategory}
             onRenameCategory={handleRenameCategory}
@@ -678,7 +746,7 @@ export default function App() {
             onRestoreJsonBackup={handleRestoreJsonBackup}
             onExportAllCsv={handleExportAllCsv}
             onLogOut={handleLogOut}
-            onResetAppData={handleResetAppData}
+            onResetProfileData={handleResetProfileData}
           />
         )}
       </main>

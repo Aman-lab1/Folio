@@ -18,6 +18,14 @@ import {
   MAX_SAFE_PAISE,
 } from '../utils/currency';
 
+function resetDbConnection(
+  targetPromise?: Promise<IDBPDatabase<CashbookDBSchema>>
+): void {
+  if (!targetPromise || dbPromise === targetPromise) {
+    dbPromise = null;
+  }
+}
+
 function formatStorageError(err: unknown, fallback: string): Error {
   if (err instanceof Error) {
     if (err.name === 'QuotaExceededError') {
@@ -25,6 +33,20 @@ function formatStorageError(err: unknown, fallback: string): Error {
     }
     if (err.name === 'AbortError') {
       return new Error('Storage operation was cancelled before saving. No partial changes were kept.');
+    }
+    if (err.name === 'InvalidStateError' || err.name === 'TransactionInactiveError') {
+      resetDbConnection();
+      return new Error('Local storage connection was interrupted. Please try again.');
+    }
+    if (err.name === 'VersionError') {
+      resetDbConnection();
+      return new Error('Local storage database version mismatch. Reload the app to continue.');
+    }
+    if (err.name === 'SecurityError') {
+      return new Error('Local storage is blocked by browser privacy settings.');
+    }
+    if (err.name === 'UnknownError') {
+      return new Error(fallback);
     }
     return err;
   }
@@ -55,12 +77,14 @@ interface CashbookDBSchema extends DBSchema {
 
 const DB_NAME = 'cashbook_ledger_v1';
 const DB_VERSION = 1;
+const ALLOWED_AUTO_LOCK_MINUTES = new Set([0, 1, 5, 15, 30]);
 
 let dbPromise: Promise<IDBPDatabase<CashbookDBSchema>> | null = null;
 
 function getDb(): Promise<IDBPDatabase<CashbookDBSchema>> {
   if (!dbPromise) {
-    dbPromise = openDB<CashbookDBSchema>(DB_NAME, DB_VERSION, {
+    let pending: Promise<IDBPDatabase<CashbookDBSchema>>;
+    pending = openDB<CashbookDBSchema>(DB_NAME, DB_VERSION, {
       upgrade(db) {
         if (!db.objectStoreNames.contains('profiles')) {
           db.createObjectStore('profiles', { keyPath: 'id' });
@@ -79,7 +103,28 @@ function getDb(): Promise<IDBPDatabase<CashbookDBSchema>> {
           txStore.createIndex('by-profile-date', ['profileId', 'date']);
         }
       },
-    });
+      blocking() {
+        resetDbConnection(pending);
+      },
+      terminated() {
+        resetDbConnection(pending);
+      },
+    })
+      .then((db) => {
+        db.addEventListener('versionchange', () => {
+          resetDbConnection(pending);
+          db.close();
+        });
+        db.addEventListener('close', () => {
+          resetDbConnection(pending);
+        });
+        return db;
+      })
+      .catch((err) => {
+        resetDbConnection(pending);
+        throw formatStorageError(err, 'Unable to open local storage database.');
+      });
+    dbPromise = pending;
   }
   return dbPromise;
 }
@@ -112,16 +157,19 @@ const DEFAULT_CATEGORIES: Array<{
 ];
 
 export async function getProfiles(): Promise<Profile[]> {
-  const db = await getDb();
-  const list = await db.getAll('profiles');
-  return list.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+  try {
+    const db = await getDb();
+    const list = await db.getAll('profiles');
+    return list.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+  } catch (err) {
+    throw formatStorageError(err, 'Unable to read profiles from local storage.');
+  }
 }
 
 export async function createProfile(
   name: string,
   pin?: string | null
 ): Promise<Profile> {
-  const db = await getDb();
   const trimmed = name.trim();
   if (!trimmed) throw new Error('Profile name is required.');
 
@@ -138,6 +186,7 @@ export async function createProfile(
   };
 
   try {
+    const db = await getDb();
     const tx = db.transaction(['profiles', 'categories'], 'readwrite');
     await tx.objectStore('profiles').put(profile);
     const catStore = tx.objectStore('categories');
@@ -196,15 +245,19 @@ export async function deleteProfile(profileId: string): Promise<void> {
 }
 
 export async function getCategories(profileId: string): Promise<Category[]> {
-  const db = await getDb();
-  const list = await db.getAllFromIndex('categories', 'by-profile', profileId);
-  return list.sort((a, b) => {
-    if (Boolean(a.isArchived) !== Boolean(b.isArchived)) {
-      return a.isArchived ? 1 : -1;
-    }
-    if (b.usageCount !== a.usageCount) return b.usageCount - a.usageCount;
-    return a.name.localeCompare(b.name);
-  });
+  try {
+    const db = await getDb();
+    const list = await db.getAllFromIndex('categories', 'by-profile', profileId);
+    return list.sort((a, b) => {
+      if (Boolean(a.isArchived) !== Boolean(b.isArchived)) {
+        return a.isArchived ? 1 : -1;
+      }
+      if (b.usageCount !== a.usageCount) return b.usageCount - a.usageCount;
+      return a.name.localeCompare(b.name);
+    });
+  } catch (err) {
+    throw formatStorageError(err, 'Unable to read categories from local storage.');
+  }
 }
 
 export async function saveCategory(category: Category): Promise<Category> {
@@ -221,9 +274,13 @@ export async function getCategoryUsageCount(
   profileId: string,
   categoryId: string
 ): Promise<number> {
-  const db = await getDb();
-  const txs = await db.getAllFromIndex('transactions', 'by-profile', profileId);
-  return txs.reduce((count, tx) => (tx.categoryId === categoryId ? count + 1 : count), 0);
+  try {
+    const db = await getDb();
+    const txs = await db.getAllFromIndex('transactions', 'by-profile', profileId);
+    return txs.reduce((count, tx) => (tx.categoryId === categoryId ? count + 1 : count), 0);
+  } catch (err) {
+    throw formatStorageError(err, 'Unable to verify category usage.');
+  }
 }
 
 export async function renameCategory(
@@ -290,38 +347,86 @@ export async function setCategoryArchived(
   }
 }
 
-export async function deleteCategory(categoryId: string): Promise<void> {
+export async function deleteCategory(
+  categoryId: string,
+  profileId: string
+): Promise<void> {
+  if (!profileId || !profileId.trim()) {
+    throw new Error('Active profile is required to delete a category.');
+  }
   try {
     const db = await getDb();
-    await db.delete('categories', categoryId);
+    const idbTx = db.transaction('categories', 'readwrite');
+    const store = idbTx.objectStore('categories');
+    const existing = await store.get(categoryId);
+    if (existing && existing.profileId !== profileId) {
+      idbTx.done.catch(() => {});
+      throw new Error('Cannot delete a category from another profile.');
+    }
+    if (existing) {
+      await store.delete(categoryId);
+    }
+    await idbTx.done;
   } catch (err) {
     throw formatStorageError(err, 'Unable to delete category.');
   }
 }
 
 export async function getPeople(profileId: string): Promise<Person[]> {
-  const db = await getDb();
-  const list = await db.getAllFromIndex('people', 'by-profile', profileId);
-  return list.sort((a, b) => {
-    if (b.usageCount !== a.usageCount) return b.usageCount - a.usageCount;
-    return a.name.localeCompare(b.name);
-  });
+  try {
+    const db = await getDb();
+    const list = await db.getAllFromIndex('people', 'by-profile', profileId);
+    return list.sort((a, b) => {
+      if (b.usageCount !== a.usageCount) return b.usageCount - a.usageCount;
+      return a.name.localeCompare(b.name);
+    });
+  } catch (err) {
+    throw formatStorageError(err, 'Unable to read saved people from local storage.');
+  }
 }
 
 export async function savePerson(person: Person): Promise<Person> {
-  const db = await getDb();
-  await db.put('people', person);
-  return person;
+  try {
+    const db = await getDb();
+    await db.put('people', person);
+    return person;
+  } catch (err) {
+    throw formatStorageError(err, 'Unable to save person.');
+  }
 }
 
-export async function deletePerson(personId: string): Promise<void> {
-  const db = await getDb();
-  await db.delete('people', personId);
+export async function deletePerson(
+  personId: string,
+  profileId: string
+): Promise<void> {
+  if (!profileId || !profileId.trim()) {
+    throw new Error('Active profile is required to remove a saved person.');
+  }
+  try {
+    const db = await getDb();
+    const idbTx = db.transaction('people', 'readwrite');
+    const store = idbTx.objectStore('people');
+    const existing = await store.get(personId);
+    if (existing && existing.profileId !== profileId) {
+      idbTx.done.catch(() => {});
+      throw new Error('Cannot remove a saved person from another profile.');
+    }
+    if (existing) {
+      await store.delete(personId);
+    }
+    await idbTx.done;
+  } catch (err) {
+    throw formatStorageError(err, 'Unable to remove saved person.');
+  }
 }
 
 export async function getTransactions(profileId: string): Promise<Transaction[]> {
-  const db = await getDb();
-  return db.getAllFromIndex('transactions', 'by-profile', profileId);
+  try {
+    const db = await getDb();
+    return await db.getAllFromIndex('transactions', 'by-profile', profileId);
+  } catch (err) {
+    throw formatStorageError(err, 'Unable to read transactions from local storage.');
+  }
 }
 
 export interface SaveTransactionInput {
@@ -556,8 +661,54 @@ export async function validateAndPreviewBackup(
   }
 
   const rawProfile = data.profile as Record<string, unknown>;
+  if (typeof rawProfile.id !== 'string' || !rawProfile.id.trim()) {
+    throw new Error('Backup profile ID is missing or invalid.');
+  }
+  const backupProfileId = rawProfile.id.trim();
+
   if (typeof rawProfile.name !== 'string' || !rawProfile.name.trim()) {
     throw new Error('Backup profile name is missing or invalid.');
+  }
+
+  if (
+    rawProfile.lastPaymentMode !== undefined &&
+    rawProfile.lastPaymentMode !== 'cash' &&
+    rawProfile.lastPaymentMode !== 'online'
+  ) {
+    throw new Error('Backup profile contains an invalid default payment mode.');
+  }
+
+  if (
+    rawProfile.lastContext !== undefined &&
+    rawProfile.lastContext !== 'personal' &&
+    rawProfile.lastContext !== 'business'
+  ) {
+    throw new Error('Backup profile contains an invalid default context.');
+  }
+
+  let validatedAutoLockMinutes = 5;
+  if (rawProfile.autoLockMinutes !== undefined) {
+    if (
+      typeof rawProfile.autoLockMinutes !== 'number' ||
+      !Number.isFinite(rawProfile.autoLockMinutes) ||
+      !Number.isInteger(rawProfile.autoLockMinutes) ||
+      rawProfile.autoLockMinutes < 0 ||
+      !ALLOWED_AUTO_LOCK_MINUTES.has(rawProfile.autoLockMinutes)
+    ) {
+      throw new Error(
+        'Backup profile contains an invalid or unsupported auto-lock duration.'
+      );
+    }
+    validatedAutoLockMinutes = rawProfile.autoLockMinutes;
+  }
+
+  if (
+    rawProfile.createdAt !== undefined &&
+    (typeof rawProfile.createdAt !== 'string' ||
+      !rawProfile.createdAt.trim() ||
+      Number.isNaN(Date.parse(rawProfile.createdAt)))
+  ) {
+    throw new Error('Backup profile creation timestamp is invalid.');
   }
 
   if (
@@ -569,6 +720,8 @@ export async function validateAndPreviewBackup(
   }
 
   const validatedCategories: Category[] = [];
+  const seenCatIds = new Set<string>();
+  const categoryById = new Map<string, Category>();
   for (let i = 0; i < data.categories.length; i++) {
     const item = data.categories[i] as Record<string, unknown> | null;
     if (
@@ -583,20 +736,43 @@ export async function validateAndPreviewBackup(
     ) {
       throw new Error(`Invalid category record found at index ${i}.`);
     }
-    validatedCategories.push({
-      id: item.id,
-      profileId: typeof item.profileId === 'string' ? item.profileId : String(rawProfile.id || ''),
+
+    const catId = item.id.trim();
+    if (seenCatIds.has(catId)) {
+      throw new Error(`Duplicate category ID (${catId}) found inside backup file.`);
+    }
+    if (
+      typeof item.profileId !== 'string' ||
+      item.profileId.trim() !== backupProfileId
+    ) {
+      throw new Error(
+        `Category "${item.name.trim()}" has an invalid or mismatched profile reference.`
+      );
+    }
+
+    const category: Category = {
+      id: catId,
+      profileId: backupProfileId,
       name: item.name.trim(),
       type: item.type,
       context: item.context,
       isDefault: Boolean(item.isDefault),
       isArchived: Boolean(item.isArchived),
-      usageCount: typeof item.usageCount === 'number' && Number.isFinite(item.usageCount) ? item.usageCount : 0,
+      usageCount:
+        typeof item.usageCount === 'number' &&
+        Number.isFinite(item.usageCount) &&
+        item.usageCount >= 0
+          ? item.usageCount
+          : 0,
       lastUsedAt: typeof item.lastUsedAt === 'string' ? item.lastUsedAt : null,
-    });
+    };
+    seenCatIds.add(catId);
+    categoryById.set(catId, category);
+    validatedCategories.push(category);
   }
 
   const validatedPeople: Person[] = [];
+  const seenPersonIds = new Set<string>();
   for (let i = 0; i < data.people.length; i++) {
     const item = data.people[i] as Record<string, unknown> | null;
     if (
@@ -609,12 +785,32 @@ export async function validateAndPreviewBackup(
     ) {
       throw new Error(`Invalid person record found at index ${i}.`);
     }
+
+    const personId = item.id.trim();
+    if (seenPersonIds.has(personId)) {
+      throw new Error(`Duplicate person ID (${personId}) found inside backup file.`);
+    }
+    if (
+      typeof item.profileId !== 'string' ||
+      item.profileId.trim() !== backupProfileId
+    ) {
+      throw new Error(
+        `Person "${item.name.trim()}" has an invalid or mismatched profile reference.`
+      );
+    }
+
+    seenPersonIds.add(personId);
     validatedPeople.push({
-      id: item.id,
-      profileId: typeof item.profileId === 'string' ? item.profileId : String(rawProfile.id || ''),
+      id: personId,
+      profileId: backupProfileId,
       name: item.name.trim(),
       roleNote: typeof item.roleNote === 'string' ? item.roleNote : undefined,
-      usageCount: typeof item.usageCount === 'number' && Number.isFinite(item.usageCount) ? item.usageCount : 0,
+      usageCount:
+        typeof item.usageCount === 'number' &&
+        Number.isFinite(item.usageCount) &&
+        item.usageCount >= 0
+          ? item.usageCount
+          : 0,
       lastUsedAt: typeof item.lastUsedAt === 'string' ? item.lastUsedAt : null,
     });
   }
@@ -647,20 +843,54 @@ export async function validateAndPreviewBackup(
       throw new Error(`Invalid or corrupted transaction record found at index ${i}.`);
     }
 
-    if (seenTxIds.has(item.id)) {
-      throw new Error(`Duplicate transaction ID (${item.id}) found inside backup file.`);
+    const txId = item.id.trim();
+    if (seenTxIds.has(txId)) {
+      throw new Error(`Duplicate transaction ID (${txId}) found inside backup file.`);
     }
-    seenTxIds.add(item.id);
+    if (
+      typeof item.profileId !== 'string' ||
+      item.profileId.trim() !== backupProfileId
+    ) {
+      throw new Error(
+        `Transaction at index ${i} has an invalid or mismatched profile reference.`
+      );
+    }
+
+    const txCatId = item.categoryId.trim();
+    const referencedCategory = categoryById.get(txCatId);
+    if (!referencedCategory) {
+      throw new Error(
+        `Transaction at index ${i} references a category that does not exist in this backup.`
+      );
+    }
+    if (
+      referencedCategory.type !== item.type ||
+      referencedCategory.context !== item.context
+    ) {
+      throw new Error(
+        `Transaction at index ${i} has a type or context inconsistent with its category.`
+      );
+    }
+
+    if (
+      item.personId !== undefined &&
+      item.personId !== null &&
+      (typeof item.personId !== 'string' || !item.personId.trim())
+    ) {
+      throw new Error(`Transaction at index ${i} has an invalid person reference.`);
+    }
+
+    seenTxIds.add(txId);
 
     validatedTxs.push({
-      id: item.id,
-      profileId: typeof item.profileId === 'string' ? item.profileId : String(rawProfile.id || ''),
+      id: txId,
+      profileId: backupProfileId,
       amountPaise: item.amountPaise,
       type: item.type,
       context: item.context,
-      categoryId: item.categoryId,
+      categoryId: txCatId,
       categoryNameSnapshot: item.categoryNameSnapshot.trim(),
-      personId: typeof item.personId === 'string' && item.personId.trim() ? item.personId : null,
+      personId: typeof item.personId === 'string' ? item.personId.trim() : null,
       personNameSnapshot:
         typeof item.personNameSnapshot === 'string' && item.personNameSnapshot.trim()
           ? item.personNameSnapshot.trim()
@@ -693,12 +923,11 @@ export async function validateAndPreviewBackup(
     appName: typeof data.appName === 'string' && data.appName.trim() ? data.appName.trim() : undefined,
     exportedAt: exportedAt || new Date().toISOString(),
     profile: {
-      id: typeof rawProfile.id === 'string' && rawProfile.id.trim() ? rawProfile.id : generateId(),
+      id: backupProfileId,
       name: rawProfile.name.trim(),
       lastPaymentMode: rawProfile.lastPaymentMode === 'online' ? 'online' : 'cash',
       lastContext: rawProfile.lastContext === 'personal' ? 'personal' : 'business',
-      autoLockMinutes:
-        typeof rawProfile.autoLockMinutes === 'number' ? rawProfile.autoLockMinutes : 5,
+      autoLockMinutes: validatedAutoLockMinutes,
       createdAt:
         typeof rawProfile.createdAt === 'string'
           ? rawProfile.createdAt
@@ -862,18 +1091,87 @@ export async function restoreBackupPayload(
   }
 }
 
+export async function resetProfileData(profileId: string): Promise<void> {
+  if (typeof profileId !== 'string' || !profileId.trim()) {
+    throw new Error('A valid active profile ID is required to delete profile data.');
+  }
+  const targetProfileId = profileId.trim();
+
+  try {
+    const db = await getDb();
+    const idbTx = db.transaction(
+      ['profiles', 'categories', 'people', 'transactions'],
+      'readwrite'
+    );
+
+    try {
+      const profile = await idbTx.objectStore('profiles').get(targetProfileId);
+      if (!profile) {
+        throw new Error('Active profile does not exist in storage.');
+      }
+
+      const catStore = idbTx.objectStore('categories');
+      const peopleStore = idbTx.objectStore('people');
+      const txStore = idbTx.objectStore('transactions');
+
+      const [catRecords, peopleRecords, txRecords] = await Promise.all([
+        catStore.index('by-profile').getAll(targetProfileId),
+        peopleStore.index('by-profile').getAll(targetProfileId),
+        txStore.index('by-profile').getAll(targetProfileId),
+      ]);
+
+      for (const cat of catRecords) {
+        if (cat.profileId !== targetProfileId) {
+          throw new Error('Profile ownership mismatch while deleting categories.');
+        }
+        await catStore.delete(cat.id);
+      }
+
+      for (const person of peopleRecords) {
+        if (person.profileId !== targetProfileId) {
+          throw new Error('Profile ownership mismatch while deleting saved people.');
+        }
+        await peopleStore.delete(person.id);
+      }
+
+      for (const tx of txRecords) {
+        if (tx.profileId !== targetProfileId) {
+          throw new Error('Profile ownership mismatch while deleting transactions.');
+        }
+        await txStore.delete(tx.id);
+      }
+
+      await idbTx.done;
+    } catch (innerErr) {
+      try {
+        idbTx.abort();
+      } catch {
+        // Ignore if transaction already aborted or finished
+      }
+      await idbTx.done.catch(() => {});
+      throw innerErr;
+    }
+  } catch (err) {
+    throw formatStorageError(err, 'Unable to delete active profile data.');
+  }
+}
+
 export async function resetAllAppData(): Promise<void> {
-  const db = await getDb();
-  const idbTx = db.transaction(
-    ['profiles', 'categories', 'people', 'transactions'],
-    'readwrite'
-  );
-  await Promise.all([
-    idbTx.objectStore('profiles').clear(),
-    idbTx.objectStore('categories').clear(),
-    idbTx.objectStore('people').clear(),
-    idbTx.objectStore('transactions').clear(),
-  ]);
-  await idbTx.done;
+  try {
+    const db = await getDb();
+    const idbTx = db.transaction(
+      ['profiles', 'categories', 'people', 'transactions'],
+      'readwrite'
+    );
+    await Promise.all([
+      idbTx.objectStore('profiles').clear(),
+      idbTx.objectStore('categories').clear(),
+      idbTx.objectStore('people').clear(),
+      idbTx.objectStore('transactions').clear(),
+    ]);
+    await idbTx.done;
+  } catch (err) {
+    throw formatStorageError(err, 'Unable to clear local app data.');
+  }
 }
 

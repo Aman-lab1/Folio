@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { ArrowRight, Plus } from 'lucide-react';
 import { AppTab, Transaction, TransactionContext } from '../types/cashbook';
 import {
@@ -26,6 +26,25 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
   onNavigateTab,
 }) => {
   const [contextFilter, setContextFilter] = useState<'all' | TransactionContext>('all');
+  const [dateKey, setDateKey] = useState(() => getTodayDateStr());
+
+  useEffect(() => {
+    const syncDate = () => {
+      const latest = getTodayDateStr();
+      setDateKey((prev) => (prev === latest ? prev : latest));
+    };
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        syncDate();
+      }
+    };
+    window.addEventListener('focus', syncDate);
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => {
+      window.removeEventListener('focus', syncDate);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
+  }, []);
 
   const scopedTransactions = useMemo(() => {
     const list =
@@ -35,14 +54,16 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
     return sortTransactionsNewestFirst(list);
   }, [transactions, contextFilter]);
 
-  const todayStr = getTodayDateStr();
+  const liveTodayStr = getTodayDateStr();
+  const todayStr = liveTodayStr !== dateKey ? liveTodayStr : dateKey;
+
   const todayTxs = useMemo(
     () => scopedTransactions.filter((t) => t.date === todayStr),
     [scopedTransactions, todayStr]
   );
   const todaySummary = useMemo(() => computeSummary(todayTxs), [todayTxs]);
 
-  const monthRange = useMemo(() => getDateRangeForPreset('month'), []);
+  const monthRange = useMemo(() => getDateRangeForPreset('month'), [todayStr]);
   const monthTxs = useMemo(
     () =>
       scopedTransactions.filter(

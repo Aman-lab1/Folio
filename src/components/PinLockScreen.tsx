@@ -352,9 +352,6 @@ export const PinLockScreen: React.FC<PinLockScreenProps> = ({
                           setPinDigits('');
                           setPinError('');
                           onSelectProfile(p.id);
-                          if (!p.pinHash) {
-                            onUnlock(p.id);
-                          }
                         }}
                         className={`min-h-[48px] flex items-center gap-2 px-3.5 rounded-xl border text-left text-sm font-medium transition-colors ${
                           active
