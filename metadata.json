@@ -1,0 +1,6 @@
+{
+  "name": "Folio",
+  "description": "Folio — Every entry tells a story. Private offline-first personal and business money tracker in INR.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
