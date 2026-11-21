@@ -54,8 +54,106 @@ interface QuickEntryModalProps {
   ) => Promise<Category>;
 }
 
-export const QuickEntryModal: React.FC<QuickEntryModalProps> = ({
-  isOpen,
+function getMatchingCategories(
+  categories: Category[],
+  type: TransactionType,
+  context: TransactionContext,
+  editingTransaction: Transaction | null
+): Category[] {
+  return categories
+    .filter((c) => {
+      if (c.type !== type || c.context !== context) return false;
+      if (c.isArchived && editingTransaction?.categoryId !== c.id) return false;
+      return true;
+    })
+    .sort((a, b) => {
+      if (Boolean(a.isArchived) !== Boolean(b.isArchived)) {
+        return a.isArchived ? 1 : -1;
+      }
+      if (b.usageCount !== a.usageCount) return b.usageCount - a.usageCount;
+      return a.name.localeCompare(b.name);
+    });
+}
+
+function resolveInitialFormState(
+  profileId: string,
+  defaultPaymentMode: PaymentMode,
+  defaultContext: TransactionContext,
+  categories: Category[],
+  editingTransaction: Transaction | null,
+  initialDraft?: QuickEntryDraft | null
+) {
+  const canRestoreDraft =
+    initialDraft &&
+    initialDraft.profileId === profileId &&
+    initialDraft.editingId === (editingTransaction?.id ?? null);
+
+  if (canRestoreDraft && initialDraft) {
+    const matching = getMatchingCategories(
+      categories,
+      initialDraft.type,
+      initialDraft.context,
+      editingTransaction
+    );
+    const hasDraftCat =
+      initialDraft.categoryId &&
+      (matching.some((c) => c.id === initialDraft.categoryId) ||
+        (editingTransaction && editingTransaction.categoryId === initialDraft.categoryId));
+
+    return {
+      amountStr: initialDraft.amountStr,
+      type: initialDraft.type,
+      context: initialDraft.context,
+      categoryId: hasDraftCat ? initialDraft.categoryId : (matching[0]?.id ?? ''),
+      paymentMode: initialDraft.paymentMode,
+      selectedPersonId: initialDraft.selectedPersonId,
+      personInput: initialDraft.personInput,
+      saveNewPerson: initialDraft.saveNewPerson,
+      date: initialDraft.date,
+      time: initialDraft.time,
+      notes: initialDraft.notes,
+    };
+  }
+
+  if (editingTransaction) {
+    return {
+      amountStr: paiseToRupeeInputString(editingTransaction.amountPaise),
+      type: editingTransaction.type,
+      context: editingTransaction.context,
+      categoryId: editingTransaction.categoryId,
+      paymentMode: editingTransaction.paymentMode,
+      selectedPersonId: editingTransaction.personId,
+      personInput: editingTransaction.personNameSnapshot ?? '',
+      saveNewPerson: false,
+      date: editingTransaction.date,
+      time: editingTransaction.time,
+      notes: editingTransaction.notes,
+    };
+  }
+
+  const initialMatching = getMatchingCategories(categories, 'spent', defaultContext, null);
+  return {
+    amountStr: '',
+    type: 'spent' as TransactionType,
+    context: defaultContext,
+    categoryId: initialMatching[0]?.id ?? '',
+    paymentMode: defaultPaymentMode,
+    selectedPersonId: null as string | null,
+    personInput: '',
+    saveNewPerson: true,
+    date: getTodayDateStr(),
+    time: getCurrentTimeStr(),
+    notes: '',
+  };
+}
+
+export const QuickEntryModal: React.FC<QuickEntryModalProps> = (props) => {
+  if (!props.isOpen) return null;
+  const formKey = `${props.profileId}::${props.editingTransaction?.id ?? 'new'}`;
+  return <QuickEntryForm key={formKey} {...props} />;
+};
+
+const QuickEntryForm: React.FC<QuickEntryModalProps> = ({
   onClose,
   profileId,
   defaultPaymentMode,
@@ -71,19 +169,35 @@ export const QuickEntryModal: React.FC<QuickEntryModalProps> = ({
 }) => {
   const amountInputRef = useRef<HTMLInputElement>(null);
   const isSavingRef = useRef(false);
-  const initializedForOpenRef = useRef(false);
 
-  const [amountStr, setAmountStr] = useState('');
-  const [type, setType] = useState<TransactionType>('spent');
-  const [context, setContext] = useState<TransactionContext>(defaultContext);
-  const [categoryId, setCategoryId] = useState('');
-  const [paymentMode, setPaymentMode] = useState<PaymentMode>(defaultPaymentMode);
-  const [selectedPersonId, setSelectedPersonId] = useState<string | null>(null);
-  const [personInput, setPersonInput] = useState('');
-  const [saveNewPerson, setSaveNewPerson] = useState(true);
-  const [date, setDate] = useState(getTodayDateStr());
-  const [time, setTime] = useState(getCurrentTimeStr());
-  const [notes, setNotes] = useState('');
+  const initialState = useMemo(
+    () =>
+      resolveInitialFormState(
+        profileId,
+        defaultPaymentMode,
+        defaultContext,
+        categories,
+        editingTransaction,
+        initialDraft
+      ),
+    // Computed once per QuickEntryForm mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    []
+  );
+
+  const [amountStr, setAmountStr] = useState(initialState.amountStr);
+  const [type, setType] = useState<TransactionType>(initialState.type);
+  const [context, setContext] = useState<TransactionContext>(initialState.context);
+  const [categoryId, setCategoryId] = useState(initialState.categoryId);
+  const [paymentMode, setPaymentMode] = useState<PaymentMode>(initialState.paymentMode);
+  const [selectedPersonId, setSelectedPersonId] = useState<string | null>(
+    initialState.selectedPersonId
+  );
+  const [personInput, setPersonInput] = useState(initialState.personInput);
+  const [saveNewPerson, setSaveNewPerson] = useState(initialState.saveNewPerson);
+  const [date, setDate] = useState(initialState.date);
+  const [time, setTime] = useState(initialState.time);
+  const [notes, setNotes] = useState(initialState.notes);
 
   const [addingCategory, setAddingCategory] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState('');
@@ -91,74 +205,16 @@ export const QuickEntryModal: React.FC<QuickEntryModalProps> = ({
   const [isSaving, setIsSaving] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
-  // Initialize form whenever modal opens or target changes (prefer preserved draft after auto-lock)
   useEffect(() => {
-    if (!isOpen) {
-      initializedForOpenRef.current = false;
-      return;
-    }
-
-    setError('');
-    setConfirmDelete(false);
-    setAddingCategory(false);
-    setNewCategoryName('');
-
-    const canRestoreDraft =
-      initialDraft &&
-      initialDraft.profileId === profileId &&
-      initialDraft.editingId === (editingTransaction?.id ?? null);
-
-    if (canRestoreDraft && initialDraft) {
-      setAmountStr(initialDraft.amountStr);
-      setType(initialDraft.type);
-      setContext(initialDraft.context);
-      setCategoryId(initialDraft.categoryId);
-      setPaymentMode(initialDraft.paymentMode);
-      setSelectedPersonId(initialDraft.selectedPersonId);
-      setPersonInput(initialDraft.personInput);
-      setSaveNewPerson(initialDraft.saveNewPerson);
-      setDate(initialDraft.date);
-      setTime(initialDraft.time);
-      setNotes(initialDraft.notes);
-    } else if (editingTransaction) {
-      setAmountStr(paiseToRupeeInputString(editingTransaction.amountPaise));
-      setType(editingTransaction.type);
-      setContext(editingTransaction.context);
-      setCategoryId(editingTransaction.categoryId);
-      setPaymentMode(editingTransaction.paymentMode);
-      setSelectedPersonId(editingTransaction.personId);
-      setPersonInput(editingTransaction.personNameSnapshot ?? '');
-      setSaveNewPerson(false);
-      setDate(editingTransaction.date);
-      setTime(editingTransaction.time);
-      setNotes(editingTransaction.notes);
-    } else {
-      setAmountStr('');
-      setType('spent');
-      setContext(defaultContext);
-      setCategoryId('');
-      setPaymentMode(defaultPaymentMode);
-      setSelectedPersonId(null);
-      setPersonInput('');
-      setSaveNewPerson(true);
-      setDate(getTodayDateStr());
-      setTime(getCurrentTimeStr());
-      setNotes('');
-    }
-
-    initializedForOpenRef.current = true;
-
     const timer = setTimeout(() => {
       amountInputRef.current?.focus();
     }, 60);
     return () => clearTimeout(timer);
-    // Intentionally exclude initialDraft from deps so edits don't re-trigger initialization
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, profileId, editingTransaction, defaultContext, defaultPaymentMode]);
+  }, []);
 
   // Sync live unsaved draft back to App so auto-lock never discards unsaved form entries
   useEffect(() => {
-    if (!isOpen || !initializedForOpenRef.current || !onDraftChange) return;
+    if (!onDraftChange) return;
     onDraftChange({
       profileId,
       editingId: editingTransaction?.id ?? null,
@@ -175,7 +231,6 @@ export const QuickEntryModal: React.FC<QuickEntryModalProps> = ({
       notes,
     });
   }, [
-    isOpen,
     profileId,
     editingTransaction,
     amountStr,
@@ -193,30 +248,28 @@ export const QuickEntryModal: React.FC<QuickEntryModalProps> = ({
   ]);
 
   // Filter categories for active type + context; hide archived unless currently attached to the edited entry
-  const matchingCategories = useMemo(() => {
-    return categories
-      .filter((c) => {
-        if (c.type !== type || c.context !== context) return false;
-        if (c.isArchived && editingTransaction?.categoryId !== c.id) return false;
-        return true;
-      })
-      .sort((a, b) => {
-        if (Boolean(a.isArchived) !== Boolean(b.isArchived)) {
-          return a.isArchived ? 1 : -1;
-        }
-        if (b.usageCount !== a.usageCount) return b.usageCount - a.usageCount;
-        return a.name.localeCompare(b.name);
-      });
-  }, [categories, type, context, editingTransaction]);
+  const matchingCategories = useMemo(
+    () => getMatchingCategories(categories, type, context, editingTransaction),
+    [categories, type, context, editingTransaction]
+  );
 
-  // Auto-select top category when switching type/context if current doesn't match
-  useEffect(() => {
-    if (!isOpen) return;
-    const stillValid = matchingCategories.some((c) => c.id === categoryId);
-    if (!stillValid) {
-      setCategoryId(matchingCategories[0]?.id ?? '');
+  const handleTypeChange = (nextType: TransactionType) => {
+    if (nextType === type) return;
+    setType(nextType);
+    const nextCats = getMatchingCategories(categories, nextType, context, editingTransaction);
+    if (!nextCats.some((c) => c.id === categoryId)) {
+      setCategoryId(nextCats[0]?.id ?? '');
     }
-  }, [isOpen, matchingCategories, categoryId]);
+  };
+
+  const handleContextChange = (nextContext: TransactionContext) => {
+    if (nextContext === context) return;
+    setContext(nextContext);
+    const nextCats = getMatchingCategories(categories, type, nextContext, editingTransaction);
+    if (!nextCats.some((c) => c.id === categoryId)) {
+      setCategoryId(nextCats[0]?.id ?? '');
+    }
+  };
 
   const frequentPeople = useMemo(() => {
     const q = personInput.trim().toLowerCase();
@@ -231,8 +284,6 @@ export const QuickEntryModal: React.FC<QuickEntryModalProps> = ({
     if (!trimmed) return false;
     return people.some((p) => p.name.toLowerCase() === trimmed);
   }, [people, personInput]);
-
-  if (!isOpen) return null;
 
   const handleQuickAddCategory = async () => {
     const trimmed = newCategoryName.trim();
@@ -432,7 +483,7 @@ export const QuickEntryModal: React.FC<QuickEntryModalProps> = ({
               <div className="grid grid-cols-2 gap-1 p-1 rounded-xl bg-[#18181D] border border-white/[0.06]">
                 <button
                   type="button"
-                  onClick={() => setType('spent')}
+                  onClick={() => handleTypeChange('spent')}
                   className={`min-w-0 min-h-[40px] px-2 rounded-lg text-xs font-semibold transition-colors truncate ${
                     type === 'spent'
                       ? 'bg-rose-500/15 text-rose-300 border border-rose-500/30'
@@ -443,7 +494,7 @@ export const QuickEntryModal: React.FC<QuickEntryModalProps> = ({
                 </button>
                 <button
                   type="button"
-                  onClick={() => setType('received')}
+                  onClick={() => handleTypeChange('received')}
                   className={`min-w-0 min-h-[40px] px-2 rounded-lg text-xs font-semibold transition-colors truncate ${
                     type === 'received'
                       ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30'
@@ -460,7 +511,7 @@ export const QuickEntryModal: React.FC<QuickEntryModalProps> = ({
               <div className="grid grid-cols-2 gap-1 p-1 rounded-xl bg-[#18181D] border border-white/[0.06]">
                 <button
                   type="button"
-                  onClick={() => setContext('business')}
+                  onClick={() => handleContextChange('business')}
                   className={`min-w-0 min-h-[40px] px-2 rounded-lg text-xs font-semibold transition-colors truncate ${
                     context === 'business'
                       ? 'bg-zinc-100 text-zinc-950'
@@ -471,7 +522,7 @@ export const QuickEntryModal: React.FC<QuickEntryModalProps> = ({
                 </button>
                 <button
                   type="button"
-                  onClick={() => setContext('personal')}
+                  onClick={() => handleContextChange('personal')}
                   className={`min-w-0 min-h-[40px] px-2 rounded-lg text-xs font-semibold transition-colors truncate ${
                     context === 'personal'
                       ? 'bg-zinc-100 text-zinc-950'

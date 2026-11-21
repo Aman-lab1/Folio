@@ -188,7 +188,17 @@ export async function createProfile(
   try {
     const db = await getDb();
     const tx = db.transaction(['profiles', 'categories'], 'readwrite');
-    await tx.objectStore('profiles').put(profile);
+    const profileStore = tx.objectStore('profiles');
+    const existingProfiles = await profileStore.getAll();
+    const normalizedNewName = trimmed.toLowerCase();
+    const duplicate = existingProfiles.find(
+      (p) => p.name.trim().toLowerCase() === normalizedNewName
+    );
+    if (duplicate) {
+      throw new Error(`A profile named "${trimmed}" already exists. Choose a different name.`);
+    }
+
+    await profileStore.put(profile);
     const catStore = tx.objectStore('categories');
     for (const def of DEFAULT_CATEGORIES) {
       await catStore.put({
@@ -211,9 +221,22 @@ export async function createProfile(
 }
 
 export async function updateProfile(profile: Profile): Promise<void> {
+  const trimmed = profile.name.trim();
+  if (!trimmed) throw new Error('Profile name is required.');
   try {
     const db = await getDb();
-    await db.put('profiles', profile);
+    const tx = db.transaction('profiles', 'readwrite');
+    const store = tx.objectStore('profiles');
+    const existingProfiles = await store.getAll();
+    const normalizedName = trimmed.toLowerCase();
+    const duplicate = existingProfiles.find(
+      (p) => p.id !== profile.id && p.name.trim().toLowerCase() === normalizedName
+    );
+    if (duplicate) {
+      throw new Error(`A profile named "${trimmed}" already exists. Choose a different name.`);
+    }
+    await store.put({ ...profile, name: trimmed });
+    await tx.done;
   } catch (err) {
     throw formatStorageError(err, 'Unable to update profile settings.');
   }

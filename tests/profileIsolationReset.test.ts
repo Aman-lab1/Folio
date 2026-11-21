@@ -703,6 +703,29 @@ async function runTests() {
     'Profile B still untouched after deleting Profile C'
   );
 
+  // 8b. Duplicate profile name prevention (case-insensitive, trimmed whitespace)
+  const uniqueBiz = await db.createProfile('Business');
+  await assertRejects(
+    () => db.createProfile('business'),
+    'already exists',
+    'createProfile rejects lowercase duplicate'
+  );
+  await assertRejects(
+    () => db.createProfile(' Business '),
+    'already exists',
+    'createProfile rejects whitespace-padded duplicate'
+  );
+  await assertRejects(
+    () => db.updateProfile({ ...profileA, name: '  BUSINESS  ' }),
+    'already exists',
+    'updateProfile rejects renaming to another profile name'
+  );
+  const profilesBeforeReset = await db.getProfiles();
+  assert(
+    profilesBeforeReset.some((p) => p.id === uniqueBiz.id && p.name === 'Business'),
+    'Existing Business profile preserved unchanged'
+  );
+
   // 9. Verify resetAllAppData remains distinct & wipes everything when explicitly invoked
   await db.resetAllAppData();
   const finalSnapshot = idbMock.getStoresSnapshot();
