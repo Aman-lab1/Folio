@@ -86,10 +86,10 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-zinc-100">
+          <h1 className="text-[28px] sm:text-3xl font-bold tracking-tight text-zinc-100">
             Financial Reports
           </h1>
-          <p className="text-[13px] sm:text-sm text-zinc-400 mt-0.5">
+          <p className="text-sm sm:text-base text-zinc-400 mt-0.5">
             Totals are calculated directly from your recorded transactions
           </p>
         </div>
@@ -197,27 +197,27 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
 
       {/* Headline Totals Strip */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="rounded-2xl border border-white/[0.08] bg-[#121216] p-4">
-          <p className="text-xs text-zinc-400">Total Received</p>
-          <p className="mt-1.5 font-mono-num text-xl font-bold text-emerald-400">
+        <div className="rounded-2xl border border-white/[0.08] bg-[#121216] p-4 min-w-0">
+          <p className="text-sm text-zinc-400">Total Received</p>
+          <p className="mt-1.5 font-mono-num text-xl sm:text-2xl font-bold text-emerald-400">
             {formatPaise(summary.receivedPaise, { type: 'received' })}
           </p>
         </div>
-        <div className="rounded-2xl border border-white/[0.08] bg-[#121216] p-4">
-          <p className="text-xs text-zinc-400">Total Spent</p>
-          <p className="mt-1.5 font-mono-num text-xl font-bold text-rose-400">
+        <div className="rounded-2xl border border-white/[0.08] bg-[#121216] p-4 min-w-0">
+          <p className="text-sm text-zinc-400">Total Spent</p>
+          <p className="mt-1.5 font-mono-num text-xl sm:text-2xl font-bold text-rose-400">
             {formatPaise(summary.spentPaise, { type: 'spent' })}
           </p>
         </div>
-        <div className="rounded-2xl border border-white/[0.08] bg-[#121216] p-4">
-          <p className="text-xs text-zinc-400">Net Cashflow Difference</p>
-          <p className="mt-1.5 font-mono-num text-xl font-bold text-zinc-100">
+        <div className="rounded-2xl border border-white/[0.08] bg-[#121216] p-4 min-w-0">
+          <p className="text-sm text-zinc-400">Net Cashflow Difference</p>
+          <p className="mt-1.5 font-mono-num text-xl sm:text-2xl font-bold text-zinc-100">
             {formatPaise(summary.netPaise, { showSign: true })}
           </p>
         </div>
-        <div className="rounded-2xl border border-white/[0.08] bg-[#121216] p-4">
-          <p className="text-xs text-zinc-400">Transactions</p>
-          <p className="mt-1.5 font-mono-num text-xl font-bold text-zinc-100">
+        <div className="rounded-2xl border border-white/[0.08] bg-[#121216] p-4 min-w-0">
+          <p className="text-sm text-zinc-400">Transactions</p>
+          <p className="mt-1.5 font-mono-num text-xl sm:text-2xl font-bold text-zinc-100">
             {summary.count}
           </p>
         </div>
@@ -260,7 +260,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
           {/* Spent Categories */}
           <section className="rounded-2xl border border-white/[0.08] bg-[#121216] p-5">
-            <h2 className="text-sm font-semibold text-zinc-100 mb-4">
+            <h2 className="text-lg sm:text-xl font-semibold text-zinc-100 mb-4">
               Expenses by Category
             </h2>
             {spentCategories.length === 0 ? (
@@ -292,10 +292,10 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
                           : 'border-transparent hover:bg-white/[0.03]'
                       }`}
                     >
-                      <div className="flex items-center justify-between text-xs mb-1.5">
-                        <span className="font-medium text-zinc-200">
+                      <div className="flex items-center justify-between text-sm sm:text-base mb-1.5 gap-2">
+                        <span className="font-medium text-zinc-200 min-w-0">
                           {cat.categoryName}{' '}
-                          <span className="text-zinc-500">
+                          <span className="text-sm text-zinc-500">
                             · {cat.context === 'business' ? 'Business' : 'Personal'} · {cat.count}
                           </span>
                         </span>
@@ -344,7 +344,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
             </section>
           ) : (
             <section className="rounded-2xl border border-white/[0.08] bg-[#121216] p-5">
-              <h2 className="text-sm font-semibold text-zinc-100 mb-4">
+              <h2 className="text-lg sm:text-xl font-semibold text-zinc-100 mb-4">
                 Money Received by Category
               </h2>
               {receivedCategories.length === 0 ? (
@@ -397,10 +397,10 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           <section className="lg:col-span-6 rounded-2xl border border-white/[0.08] bg-[#121216] overflow-hidden">
             <div className="px-5 py-3.5 border-b border-white/[0.08]">
-              <h2 className="text-sm font-semibold text-zinc-100">
+              <h2 className="text-lg sm:text-xl font-semibold text-zinc-100">
                 Person-Wise Summary
               </h2>
-              <p className="text-xs text-zinc-500 mt-0.5">
+              <p className="text-sm text-zinc-500 mt-0.5">
                 Tap a person to inspect all payments to or from them
               </p>
             </div>

@@ -429,7 +429,7 @@ const QuickEntryForm: React.FC<QuickEntryModalProps> = ({
 
         {/* Header */}
         <div className="flex items-center justify-between gap-2 px-4 sm:px-5 pt-3 pb-3 border-b border-white/[0.08] shrink-0">
-          <h2 id="quick-entry-title" className="min-w-0 truncate text-base font-semibold text-zinc-100">
+          <h2 id="quick-entry-title" className="min-w-0 truncate text-lg sm:text-xl font-semibold text-zinc-100">
             {editingTransaction ? 'Edit Entry' : 'Quick Entry'}
           </h2>
           <div className="flex items-center gap-1 shrink-0">
@@ -466,7 +466,7 @@ const QuickEntryForm: React.FC<QuickEntryModalProps> = ({
         >
           {/* Huge Amount Input */}
           <div className="w-full min-w-0 rounded-2xl border border-white/[0.08] bg-[#18181D] px-3.5 sm:px-4 py-3.5 focus-within:border-zinc-400 transition-colors">
-            <label htmlFor="tx-amount" className="block text-xs font-medium text-zinc-400 mb-1">
+            <label htmlFor="tx-amount" className="block text-base font-medium text-zinc-400 mb-1">
               Amount (INR)
             </label>
             <div className="flex items-baseline gap-2 min-w-0">
@@ -498,12 +498,12 @@ const QuickEntryForm: React.FC<QuickEntryModalProps> = ({
           {/* Type + Context 1-tap switches */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 min-w-0">
             <div className="min-w-0">
-              <span className="block text-xs font-medium text-zinc-400 mb-1.5">Type</span>
+              <span className="block text-base font-medium text-zinc-400 mb-1.5">Type</span>
               <div className="grid grid-cols-2 gap-1 p-1 rounded-xl bg-[#18181D] border border-white/[0.06]">
                 <button
                   type="button"
                   onClick={() => handleTypeChange('spent')}
-                  className={`min-w-0 min-h-[40px] px-2 rounded-lg text-xs font-semibold transition-colors truncate ${
+                  className={`min-w-0 min-h-[42px] px-2 rounded-lg text-sm sm:text-[15px] font-semibold transition-colors truncate ${
                     type === 'spent'
                       ? 'bg-rose-500/15 text-rose-300 border border-rose-500/30'
                       : 'text-zinc-400 hover:text-zinc-200'
@@ -514,7 +514,7 @@ const QuickEntryForm: React.FC<QuickEntryModalProps> = ({
                 <button
                   type="button"
                   onClick={() => handleTypeChange('received')}
-                  className={`min-w-0 min-h-[40px] px-2 rounded-lg text-xs font-semibold transition-colors truncate ${
+                  className={`min-w-0 min-h-[42px] px-2 rounded-lg text-sm sm:text-[15px] font-semibold transition-colors truncate ${
                     type === 'received'
                       ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30'
                       : 'text-zinc-400 hover:text-zinc-200'
@@ -526,12 +526,12 @@ const QuickEntryForm: React.FC<QuickEntryModalProps> = ({
             </div>
 
             <div className="min-w-0">
-              <span className="block text-xs font-medium text-zinc-400 mb-1.5">Context</span>
+              <span className="block text-base font-medium text-zinc-400 mb-1.5">Context</span>
               <div className="grid grid-cols-2 gap-1 p-1 rounded-xl bg-[#18181D] border border-white/[0.06]">
                 <button
                   type="button"
                   onClick={() => handleContextChange('business')}
-                  className={`min-w-0 min-h-[40px] px-2 rounded-lg text-xs font-semibold transition-colors truncate ${
+                  className={`min-w-0 min-h-[42px] px-2 rounded-lg text-sm sm:text-[15px] font-semibold transition-colors truncate ${
                     context === 'business'
                       ? 'bg-zinc-100 text-zinc-950'
                       : 'text-zinc-400 hover:text-zinc-200'
@@ -542,7 +542,7 @@ const QuickEntryForm: React.FC<QuickEntryModalProps> = ({
                 <button
                   type="button"
                   onClick={() => handleContextChange('personal')}
-                  className={`min-w-0 min-h-[40px] px-2 rounded-lg text-xs font-semibold transition-colors truncate ${
+                  className={`min-w-0 min-h-[42px] px-2 rounded-lg text-sm sm:text-[15px] font-semibold transition-colors truncate ${
                     context === 'personal'
                       ? 'bg-zinc-100 text-zinc-950'
                       : 'text-zinc-400 hover:text-zinc-200'
@@ -557,11 +557,11 @@ const QuickEntryForm: React.FC<QuickEntryModalProps> = ({
           {/* Categories Quick-Pick */}
           <div className="min-w-0">
             <div className="flex items-center justify-between gap-2 mb-1.5">
-              <span className="text-xs font-medium text-zinc-400">Category</span>
+              <span className="text-base font-medium text-zinc-400">Category</span>
               <button
                 type="button"
                 onClick={() => setAddingCategory((v) => !v)}
-                className="text-xs font-medium text-zinc-300 hover:text-white flex items-center gap-1 whitespace-nowrap shrink-0"
+                className="text-sm font-medium text-zinc-300 hover:text-white flex items-center gap-1 whitespace-nowrap shrink-0"
               >
                 <Plus className="w-3.5 h-3.5" />
                 <span>{addingCategory ? 'Cancel' : 'New Category'}</span>
@@ -599,7 +599,7 @@ const QuickEntryForm: React.FC<QuickEntryModalProps> = ({
                     key={cat.id}
                     type="button"
                     onClick={() => setCategoryId(cat.id)}
-                    className={`min-h-[38px] max-w-full px-3 py-1.5 rounded-xl text-xs font-medium border transition-colors truncate ${
+                    className={`min-h-[40px] max-w-full px-3.5 py-1.5 rounded-xl text-[15px] font-medium border transition-colors truncate ${
                       selected
                         ? 'border-zinc-200 bg-zinc-100 text-zinc-950'
                         : 'border-white/[0.08] bg-[#18181D] text-zinc-300 hover:bg-zinc-800'
@@ -620,12 +620,12 @@ const QuickEntryForm: React.FC<QuickEntryModalProps> = ({
 
           {/* Payment Mode */}
           <div className="min-w-0">
-            <span className="block text-xs font-medium text-zinc-400 mb-1.5">Payment Mode</span>
+            <span className="block text-base font-medium text-zinc-400 mb-1.5">Payment Mode</span>
             <div className="grid grid-cols-2 gap-1 p-1 rounded-xl bg-[#18181D] border border-white/[0.06]">
               <button
                 type="button"
                 onClick={() => setPaymentMode('cash')}
-                className={`min-w-0 min-h-[40px] px-2 rounded-lg text-xs font-semibold transition-colors truncate ${
+                className={`min-w-0 min-h-[42px] px-2 rounded-lg text-sm sm:text-[15px] font-semibold transition-colors truncate ${
                   paymentMode === 'cash'
                     ? 'bg-zinc-100 text-zinc-950'
                     : 'text-zinc-400 hover:text-zinc-200'
@@ -636,7 +636,7 @@ const QuickEntryForm: React.FC<QuickEntryModalProps> = ({
               <button
                 type="button"
                 onClick={() => setPaymentMode('online')}
-                className={`min-w-0 min-h-[40px] px-2 rounded-lg text-xs font-semibold transition-colors truncate ${
+                className={`min-w-0 min-h-[42px] px-2 rounded-lg text-sm sm:text-[15px] font-semibold transition-colors truncate ${
                   paymentMode === 'online'
                     ? 'bg-zinc-100 text-zinc-950'
                     : 'text-zinc-400 hover:text-zinc-200'
@@ -649,7 +649,7 @@ const QuickEntryForm: React.FC<QuickEntryModalProps> = ({
 
           {/* Person / Entity (Optional) */}
           <div className="min-w-0">
-            <label htmlFor="tx-person" className="block text-xs font-medium text-zinc-400 mb-1.5">
+            <label htmlFor="tx-person" className="block text-base font-medium text-zinc-400 mb-1.5">
               Person / Party (Optional)
             </label>
             <input
@@ -665,7 +665,7 @@ const QuickEntryForm: React.FC<QuickEntryModalProps> = ({
                 setSelectedPersonId(null);
               }}
               placeholder="e.g. Supervisor A, Supplier, Labourer..."
-              className="w-full min-w-0 min-h-[44px] rounded-xl border border-white/[0.1] bg-[#18181D] px-3.5 text-sm text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:border-zinc-400"
+              className="w-full min-w-0 min-h-[46px] rounded-xl border border-white/[0.1] bg-[#18181D] px-3.5 text-base text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:border-zinc-400"
             />
 
             {personInput.trim() && !isExactSavedPerson && (
@@ -726,7 +726,7 @@ const QuickEntryForm: React.FC<QuickEntryModalProps> = ({
           {/* Time & Date (stacked Time-first on mobile, side-by-side Date/Time on tablet & desktop) */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 min-w-0">
             <div className="min-w-0 order-2 md:order-1">
-              <label htmlFor="tx-date" className="block text-xs font-medium text-zinc-400 mb-1">
+              <label htmlFor="tx-date" className="block text-base font-medium text-zinc-400 mb-1">
                 Date
               </label>
               <input
@@ -739,11 +739,11 @@ const QuickEntryForm: React.FC<QuickEntryModalProps> = ({
                   setDate(e.target.value);
                   if (error) setError('');
                 }}
-                className="block w-full min-w-0 max-w-full min-h-[44px] rounded-xl border border-white/[0.1] bg-[#18181D] px-3 font-mono-num text-sm md:text-xs text-zinc-100 focus:outline-none focus:border-zinc-400"
+                className="box-border block w-full min-w-0 max-w-full min-h-[46px] rounded-xl border border-white/[0.1] bg-[#18181D] px-3 font-mono-num text-base md:text-sm text-zinc-100 focus:outline-none focus:border-zinc-400"
               />
             </div>
             <div className="min-w-0 order-1 md:order-2">
-              <label htmlFor="tx-time" className="block text-xs font-medium text-zinc-400 mb-1">
+              <label htmlFor="tx-time" className="block text-base font-medium text-zinc-400 mb-1">
                 Time
               </label>
               <input
@@ -756,13 +756,13 @@ const QuickEntryForm: React.FC<QuickEntryModalProps> = ({
                   setTime(e.target.value);
                   if (error) setError('');
                 }}
-                className="block w-full min-w-0 max-w-full min-h-[44px] rounded-xl border border-white/[0.1] bg-[#18181D] px-3 font-mono-num text-sm md:text-xs text-zinc-100 focus:outline-none focus:border-zinc-400"
+                className="box-border block w-full min-w-0 max-w-full min-h-[46px] rounded-xl border border-white/[0.1] bg-[#18181D] px-3 font-mono-num text-base md:text-sm text-zinc-100 focus:outline-none focus:border-zinc-400"
               />
             </div>
           </div>
 
           <div className="min-w-0">
-            <label htmlFor="tx-notes" className="block text-xs font-medium text-zinc-400 mb-1">
+            <label htmlFor="tx-notes" className="block text-base font-medium text-zinc-400 mb-1">
               Notes (Optional)
             </label>
             <input
@@ -773,12 +773,12 @@ const QuickEntryForm: React.FC<QuickEntryModalProps> = ({
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Short description if helpful..."
-              className="w-full min-w-0 min-h-[42px] rounded-xl border border-white/[0.1] bg-[#18181D] px-3.5 text-sm text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:border-zinc-400"
+              className="w-full min-w-0 min-h-[46px] rounded-xl border border-white/[0.1] bg-[#18181D] px-3.5 text-base text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:border-zinc-400"
             />
           </div>
 
           {error && (
-            <p className="text-xs font-medium text-rose-400" role="alert">
+            <p className="text-sm font-medium text-rose-400" role="alert">
               {error}
             </p>
           )}
@@ -788,7 +788,7 @@ const QuickEntryForm: React.FC<QuickEntryModalProps> = ({
             <button
               type="submit"
               disabled={isSaving}
-              className="w-full min-h-[48px] rounded-xl bg-zinc-100 text-sm font-semibold text-zinc-950 hover:bg-white active:scale-[0.98] transition-all disabled:opacity-50"
+              className="w-full min-h-[48px] rounded-xl bg-zinc-100 text-base font-semibold text-zinc-950 hover:bg-white active:scale-[0.98] transition-all disabled:opacity-50"
             >
               {isSaving
                 ? 'Saving...'

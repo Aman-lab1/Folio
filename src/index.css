@@ -59,6 +59,21 @@
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
+/* Prevent native date/time controls from exceeding container width on iOS/Android */
+input[type="date"],
+input[type="time"] {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  -webkit-min-logical-width: 0;
+  box-sizing: border-box;
+}
+
+input[type="date"]::-webkit-date-and-time-value,
+input[type="time"]::-webkit-date-and-time-value {
+  text-align: left;
+}
+
 /* Prevent iOS Safari automatic focus zoom on form controls while keeping desktop sizes unchanged */
 @media (max-width: 767px) {
   input:not([type="file"]):not([type="checkbox"]):not([type="radio"]):not(.text-3xl):not(.text-2xl):not(.text-xl):not(.text-lg),

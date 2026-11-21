@@ -85,8 +85,8 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
       {/* Header & Context Segmented Filter */}
       <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
         <div>
-          <p className="text-[13px] sm:text-sm font-medium text-zinc-400">{profileName}</p>
-          <h1 className="mt-0.5 text-2xl sm:text-3xl font-bold tracking-tight text-zinc-100">
+          <p className="text-sm sm:text-[15px] font-medium text-zinc-400">{profileName}</p>
+          <h1 className="mt-0.5 text-[28px] sm:text-3xl font-bold tracking-tight text-zinc-100">
             Daily Folio
           </h1>
         </div>
@@ -125,36 +125,36 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
           {/* Today's Cashflow Hero Card */}
           <section className="rounded-2xl border border-white/[0.08] bg-[#121216] p-5">
             <div className="flex items-center justify-between">
-              <h2 className="text-[15px] sm:text-base font-semibold text-zinc-200">Today&apos;s Activity</h2>
-              <span className="font-mono-num text-xs sm:text-[13px] text-zinc-500">
+              <h2 className="text-lg sm:text-xl font-semibold text-zinc-200">Today&apos;s Activity</h2>
+              <span className="font-mono-num text-sm text-zinc-500">
                 {todaySummary.count} {todaySummary.count === 1 ? 'entry' : 'entries'}
               </span>
             </div>
 
             <div className="mt-4 grid grid-cols-2 gap-4">
-              <div>
-                <p className="text-xs sm:text-[13px] text-zinc-400">Received</p>
+              <div className="min-w-0">
+                <p className="text-sm sm:text-[15px] text-zinc-400">Received</p>
                 <p className="mt-1 font-mono-num text-2xl sm:text-[26px] font-bold text-emerald-400">
                   {formatPaise(todaySummary.receivedPaise, { type: 'received' })}
                 </p>
               </div>
-              <div>
-                <p className="text-xs sm:text-[13px] text-zinc-400">Spent</p>
+              <div className="min-w-0">
+                <p className="text-sm sm:text-[15px] text-zinc-400">Spent</p>
                 <p className="mt-1 font-mono-num text-2xl sm:text-[26px] font-bold text-rose-400">
                   {formatPaise(todaySummary.spentPaise, { type: 'spent' })}
                 </p>
               </div>
             </div>
 
-            <div className="mt-4 pt-3.5 border-t border-white/[0.06] flex items-center justify-between">
-              <div>
-                <p className="text-xs text-zinc-400">Today&apos;s Net Difference</p>
-                <p className="text-[11px] text-zinc-500">
+            <div className="mt-4 pt-3.5 border-t border-white/[0.06] flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-sm sm:text-base text-zinc-300">Today&apos;s Net Difference</p>
+                <p className="text-sm text-zinc-500">
                   Recorded cashflow only · not opening balance
                 </p>
               </div>
               <p
-                className={`font-mono-num text-base font-semibold ${
+                className={`font-mono-num text-lg sm:text-xl font-semibold shrink-0 ${
                   todaySummary.netPaise > 0
                     ? 'text-emerald-400'
                     : todaySummary.netPaise < 0
@@ -170,49 +170,49 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
           {/* Monthly Overview + Cash vs Online */}
           <section className="rounded-2xl border border-white/[0.08] bg-[#121216] p-5">
             <div className="flex items-center justify-between">
-              <h2 className="text-[15px] sm:text-base font-semibold text-zinc-200">This Month</h2>
+              <h2 className="text-lg sm:text-xl font-semibold text-zinc-200">This Month</h2>
               <button
                 type="button"
                 onClick={() => onNavigateTab('reports')}
-                className="text-xs sm:text-[13px] font-medium text-zinc-400 hover:text-zinc-100 flex items-center gap-1 transition-colors"
+                className="text-sm font-medium text-zinc-400 hover:text-zinc-100 flex items-center gap-1 transition-colors"
               >
                 <span>Full Reports</span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </button>
             </div>
 
-            <div className="mt-4 grid grid-cols-3 gap-3">
-              <div>
-                <p className="text-xs sm:text-[13px] text-zinc-500">Received</p>
-                <p className="mt-1 font-mono-num text-[15px] sm:text-lg font-semibold text-emerald-400">
+            <div className="mt-4 grid grid-cols-1 min-[380px]:grid-cols-3 gap-3">
+              <div className="min-w-0">
+                <p className="text-sm text-zinc-500">Received</p>
+                <p className="mt-1 font-mono-num text-lg sm:text-xl font-semibold text-emerald-400">
                   {formatPaise(monthSummary.receivedPaise)}
                 </p>
               </div>
-              <div>
-                <p className="text-xs sm:text-[13px] text-zinc-500">Spent</p>
-                <p className="mt-1 font-mono-num text-[15px] sm:text-lg font-semibold text-rose-400">
+              <div className="min-w-0">
+                <p className="text-sm text-zinc-500">Spent</p>
+                <p className="mt-1 font-mono-num text-lg sm:text-xl font-semibold text-rose-400">
                   {formatPaise(monthSummary.spentPaise)}
                 </p>
               </div>
-              <div>
-                <p className="text-xs sm:text-[13px] text-zinc-500">Net Diff</p>
-                <p className="mt-1 font-mono-num text-[15px] sm:text-lg font-semibold text-zinc-100">
+              <div className="min-w-0">
+                <p className="text-sm text-zinc-500">Net Diff</p>
+                <p className="mt-1 font-mono-num text-lg sm:text-xl font-semibold text-zinc-100">
                   {formatPaise(monthSummary.netPaise, { showSign: true })}
                 </p>
               </div>
             </div>
 
-            <div className="mt-4 pt-3.5 border-t border-white/[0.06] grid grid-cols-2 gap-4">
-              <div>
-                <p className="text-xs sm:text-[13px] font-medium text-zinc-300">Cash</p>
-                <p className="mt-1 font-mono-num text-xs sm:text-[13px] text-zinc-400">
+            <div className="mt-4 pt-3.5 border-t border-white/[0.06] grid grid-cols-1 min-[360px]:grid-cols-2 gap-4">
+              <div className="min-w-0">
+                <p className="text-sm sm:text-[15px] font-medium text-zinc-300">Cash</p>
+                <p className="mt-1 font-mono-num text-sm text-zinc-400">
                   In {formatPaise(monthSummary.cashReceivedPaise)} · Out{' '}
                   {formatPaise(monthSummary.cashSpentPaise)}
                 </p>
               </div>
-              <div>
-                <p className="text-xs sm:text-[13px] font-medium text-zinc-300">Online</p>
-                <p className="mt-1 font-mono-num text-xs sm:text-[13px] text-zinc-400">
+              <div className="min-w-0">
+                <p className="text-sm sm:text-[15px] font-medium text-zinc-300">Online</p>
+                <p className="mt-1 font-mono-num text-sm text-zinc-400">
                   In {formatPaise(monthSummary.onlineReceivedPaise)} · Out{' '}
                   {formatPaise(monthSummary.onlineSpentPaise)}
                 </p>
@@ -223,17 +223,17 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
           {/* Top Spent Categories This Month */}
           {topMonthSpentCategories.length > 0 && (
             <section className="rounded-2xl border border-white/[0.08] bg-[#121216] p-5">
-              <h2 className="text-[15px] sm:text-base font-semibold text-zinc-200 mb-3">
+              <h2 className="text-lg sm:text-xl font-semibold text-zinc-200 mb-3">
                 Top Expenses This Month
               </h2>
               <div className="space-y-3">
                 {topMonthSpentCategories.map((cat) => (
                   <div key={`${cat.categoryId}_${cat.categoryName}`}>
-                    <div className="flex items-center justify-between text-[13px] mb-1">
-                      <span className="text-zinc-300 font-medium truncate pr-2">
+                    <div className="flex items-center justify-between text-base mb-1 gap-2">
+                      <span className="text-zinc-200 font-medium truncate min-w-0">
                         {cat.categoryName}
                       </span>
-                      <span className="font-mono-num text-zinc-200 shrink-0">
+                      <span className="font-mono-num text-sm sm:text-[15px] text-zinc-200 shrink-0">
                         {formatPaise(cat.totalPaise)} · {cat.sharePercent}%
                       </span>
                     </div>
@@ -252,17 +252,17 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
 
         {/* Right Column: Recent Transactions */}
         <section className="lg:col-span-7 rounded-2xl border border-white/[0.08] bg-[#121216] overflow-hidden">
-          <div className="px-5 py-4 border-b border-white/[0.08] flex items-center justify-between">
+          <div className="px-5 py-4 border-b border-white/[0.08] flex items-center justify-between gap-2">
             <div>
-              <h2 className="text-[15px] sm:text-base font-semibold text-zinc-100">Recent Transactions</h2>
-              <p className="text-xs sm:text-[13px] text-zinc-500 mt-0.5">
+              <h2 className="text-lg sm:text-xl font-semibold text-zinc-100">Recent Transactions</h2>
+              <p className="text-sm text-zinc-500 mt-0.5">
                 Tap any entry to edit or delete
               </p>
             </div>
             <button
               type="button"
               onClick={() => onNavigateTab('history')}
-              className="min-h-[36px] px-3 rounded-lg text-xs font-medium text-zinc-300 hover:text-white hover:bg-zinc-800 transition-colors flex items-center gap-1 whitespace-nowrap"
+              className="min-h-[36px] px-3 rounded-lg text-sm font-medium text-zinc-300 hover:text-white hover:bg-zinc-800 transition-colors flex items-center gap-1 whitespace-nowrap"
             >
               <span>All History</span>
               <ArrowRight className="w-3.5 h-3.5" />

@@ -666,10 +666,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-zinc-100">
+          <h1 className="text-[28px] sm:text-3xl font-bold tracking-tight text-zinc-100">
             Settings &amp; Backup
           </h1>
-          <p className="text-[13px] sm:text-sm text-zinc-400 mt-0.5">
+          <p className="text-sm sm:text-base text-zinc-400 mt-0.5">
             Private profile controls, customizable categories, saved people, and local backups
           </p>
         </div>
@@ -689,7 +689,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         {/* Profile & PIN Security */}
         <section className="rounded-2xl border border-white/[0.08] bg-[#121216] p-5 space-y-5">
           <div className="flex items-center justify-between gap-2 flex-wrap">
-            <h2 className="text-sm font-semibold text-zinc-100">
+            <h2 className="text-lg sm:text-xl font-semibold text-zinc-100">
               Active Private Profile
             </h2>
             <div className="flex items-center gap-2">
@@ -902,10 +902,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         {/* Backup, Restore & PWA Install */}
         <section className="rounded-2xl border border-white/[0.08] bg-[#121216] p-5 space-y-5">
           <div>
-            <h2 className="text-sm font-semibold text-zinc-100">
+            <h2 className="text-lg sm:text-xl font-semibold text-zinc-100">
               Backup, Restore &amp; Export
             </h2>
-            <p className="text-xs text-zinc-400 mt-1">
+            <p className="text-sm text-zinc-400 mt-1">
               Currently storing{' '}
               <span className="font-mono-num text-zinc-200">{transactionCount}</span>{' '}
               transactions locally on this device. Save a JSON backup regularly.
@@ -1018,7 +1018,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         {/* Categories Manager */}
         <section className="rounded-2xl border border-white/[0.08] bg-[#121216] p-5 space-y-4">
           <div className="flex items-center justify-between gap-2">
-            <h2 className="text-sm font-semibold text-zinc-100">
+            <h2 className="text-lg sm:text-xl font-semibold text-zinc-100">
               Categories ({activeCategoryCount}
               {archivedCategoryCount > 0 ? `, ${archivedCategoryCount} archived` : ''})
             </h2>
@@ -1118,14 +1118,14 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     <>
                       <div className="min-w-0">
                         <p
-                          className={`text-xs font-medium truncate ${
+                          className={`text-base font-medium truncate ${
                             cat.isArchived ? 'text-zinc-500 line-through' : 'text-zinc-200'
                           }`}
                         >
                           {cat.name}
                           {cat.isArchived ? ' (Archived)' : ''}
                         </p>
-                        <p className="text-[11px] text-zinc-500">
+                        <p className="text-sm text-zinc-500">
                           {cat.context === 'business' ? 'Business' : 'Personal'} ·{' '}
                           {cat.type === 'received' ? 'Received' : 'Spent'}
                         </p>
@@ -1180,7 +1180,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
         {/* Saved People Directory */}
         <section className="rounded-2xl border border-white/[0.08] bg-[#121216] p-5 space-y-4">
-          <h2 className="text-sm font-semibold text-zinc-100">
+          <h2 className="text-lg sm:text-xl font-semibold text-zinc-100">
             Saved People ({people.length})
           </h2>
 
@@ -1256,12 +1256,12 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   >
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2 min-w-0">
-                        <p className="text-xs sm:text-[13px] font-medium text-zinc-200 truncate">
+                        <p className="text-base font-medium text-zinc-200 truncate">
                           {person.name}
                         </p>
                       </div>
                       {person.roleNote && (
-                        <p className="text-[11px] text-zinc-500 truncate">{person.roleNote}</p>
+                        <p className="text-sm text-zinc-500 truncate">{person.roleNote}</p>
                       )}
                     </div>
                     <div className="flex items-center gap-1.5 shrink-0">

@@ -118,10 +118,10 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
     <div className="space-y-5">
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-zinc-100">
+          <h1 className="text-[28px] sm:text-3xl font-bold tracking-tight text-zinc-100">
             Transaction History
           </h1>
-          <p className="text-[13px] sm:text-sm text-zinc-400 mt-0.5">
+          <p className="text-sm sm:text-base text-zinc-400 mt-0.5">
             Search, filter by person, category, payment mode, or date range
           </p>
         </div>
@@ -363,26 +363,26 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
       )}
 
       {/* Filtered Totals Strip */}
-      <div className="rounded-2xl border border-white/[0.08] bg-[#121216] px-4 py-3 grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div>
-          <p className="text-[11px] text-zinc-500">Matching Entries</p>
-          <p className="font-mono-num text-sm font-semibold text-zinc-100">{summary.count}</p>
+      <div className="rounded-2xl border border-white/[0.08] bg-[#121216] px-4 py-3.5 grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="min-w-0">
+          <p className="text-sm text-zinc-500">Matching Entries</p>
+          <p className="font-mono-num text-base sm:text-lg font-semibold text-zinc-100">{summary.count}</p>
         </div>
-        <div>
-          <p className="text-[11px] text-zinc-500">Total Received</p>
-          <p className="font-mono-num text-sm font-semibold text-emerald-400">
+        <div className="min-w-0">
+          <p className="text-sm text-zinc-500">Total Received</p>
+          <p className="font-mono-num text-base sm:text-lg font-semibold text-emerald-400">
             {formatPaise(summary.receivedPaise, { type: 'received' })}
           </p>
         </div>
-        <div>
-          <p className="text-[11px] text-zinc-500">Total Spent</p>
-          <p className="font-mono-num text-sm font-semibold text-rose-400">
+        <div className="min-w-0">
+          <p className="text-sm text-zinc-500">Total Spent</p>
+          <p className="font-mono-num text-base sm:text-lg font-semibold text-rose-400">
             {formatPaise(summary.spentPaise, { type: 'spent' })}
           </p>
         </div>
-        <div>
-          <p className="text-[11px] text-zinc-500">Net Difference</p>
-          <p className="font-mono-num text-sm font-semibold text-zinc-100">
+        <div className="min-w-0">
+          <p className="text-sm text-zinc-500">Net Difference</p>
+          <p className="font-mono-num text-base sm:text-lg font-semibold text-zinc-100">
             {formatPaise(summary.netPaise, { showSign: true })}
           </p>
         </div>
@@ -405,14 +405,14 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
             >
               <div className="px-4 py-2.5 bg-[#18181D] border-b border-white/[0.06] flex items-center justify-between gap-3">
                 <div className="flex items-baseline gap-2">
-                  <h2 className="text-xs font-semibold text-zinc-200">
+                  <h2 className="text-sm sm:text-[15px] font-semibold text-zinc-200">
                     {formatDateHuman(group.date)}
                   </h2>
-                  <span className="font-mono-num text-[11px] text-zinc-500">
+                  <span className="font-mono-num text-xs sm:text-[13px] text-zinc-500">
                     {group.date}
                   </span>
                 </div>
-                <p className="font-mono-num text-xs text-zinc-400">
+                <p className="font-mono-num text-sm text-zinc-400">
                   Net{' '}
                   <span
                     className={

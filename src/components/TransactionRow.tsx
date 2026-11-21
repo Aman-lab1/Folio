@@ -48,18 +48,18 @@ export const TransactionRow: React.FC<TransactionRowProps> = ({
       </div>
 
       <div className="min-w-0 flex-1">
-        <div className="flex items-baseline gap-2">
-          <p className="text-[15px] sm:text-base font-medium text-zinc-100 truncate">
+        <div className="flex items-baseline gap-2 min-w-0">
+          <p className="text-base font-medium text-zinc-100 truncate">
             {transaction.categoryNameSnapshot}
           </p>
           {transaction.personNameSnapshot && (
-            <p className="text-[13px] sm:text-sm text-zinc-300 truncate shrink-0 max-w-[140px]">
+            <p className="text-sm sm:text-[15px] text-zinc-300 truncate shrink-0 max-w-[140px]">
               · {transaction.personNameSnapshot}
             </p>
           )}
         </div>
 
-        <p className="mt-0.5 text-[13px] text-zinc-400 truncate">
+        <p className="mt-0.5 text-sm text-zinc-400 truncate">
           {metadataParts.join(' · ')}
           {transaction.notes ? ` · ${transaction.notes}` : ''}
         </p>
@@ -67,13 +67,13 @@ export const TransactionRow: React.FC<TransactionRowProps> = ({
 
       <div className="text-right shrink-0 pl-2">
         <p
-          className={`font-mono-num text-[15px] sm:text-base font-semibold ${
+          className={`font-mono-num text-base sm:text-lg font-semibold ${
             isReceived ? 'text-emerald-400' : 'text-rose-400'
           }`}
         >
           {formatPaise(transaction.amountPaise, { type: transaction.type })}
         </p>
-        <p className="mt-0.5 text-xs text-zinc-500">
+        <p className="mt-0.5 text-sm text-zinc-500">
           {isReceived ? 'Received' : 'Spent'}
         </p>
       </div>

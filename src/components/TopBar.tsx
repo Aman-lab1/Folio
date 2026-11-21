@@ -85,7 +85,7 @@ export const TopBar: React.FC<TopBarProps> = ({
           <button
             type="button"
             onClick={onLockOrSwitch}
-            className="min-h-[40px] max-w-[170px] flex items-center gap-1.5 px-2.5 rounded-lg text-[13px] font-medium text-zinc-300 hover:text-white hover:bg-zinc-900 transition-colors"
+            className="min-h-[40px] max-w-[170px] flex items-center gap-1.5 px-2.5 rounded-lg text-sm font-medium text-zinc-300 hover:text-white hover:bg-zinc-900 transition-colors"
             title="Switch or lock profile"
           >
             {activeProfile.pinHash && <Lock className="w-3.5 h-3.5 text-zinc-400 shrink-0" />}
