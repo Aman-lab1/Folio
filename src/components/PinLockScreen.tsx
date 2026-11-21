@@ -237,7 +237,7 @@ export const PinLockScreen: React.FC<PinLockScreenProps> = ({
   const isKeypadDisabled = isVerifyingPin || cooldownSec > 0;
 
   return (
-    <div className="min-h-screen bg-[#09090B] text-zinc-100 flex flex-col items-center justify-center p-4 sm:p-6">
+    <div className="min-h-screen bg-[#09090B] text-zinc-100 flex flex-col items-center justify-center px-4 sm:px-6 pt-[max(1rem,env(safe-area-inset-top,0px))] pb-[max(1rem,env(safe-area-inset-bottom,0px))]">
       <div className="w-full max-w-md rounded-2xl border border-white/[0.08] bg-[#121216] p-6 sm:p-8 shadow-2xl">
         <div className="flex items-center justify-between">
           <div>

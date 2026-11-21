@@ -21,7 +21,7 @@ export const ToastNotification: React.FC<ToastNotificationProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-[60] flex items-center justify-center pointer-events-none pt-[max(1rem,env(safe-area-inset-top,0px))] pb-[max(1rem,env(safe-area-inset-bottom,0px))] pl-[max(1rem,env(safe-area-inset-left,0px))] pr-[max(1rem,env(safe-area-inset-right,0px))]"
+      className="fixed z-[60] pointer-events-none top-[calc(env(safe-area-inset-top,0px)+12px)] left-0 right-0 flex justify-center pl-[max(1rem,env(safe-area-inset-left,0px))] pr-[max(1rem,env(safe-area-inset-right,0px))] md:top-[76px] md:left-auto md:right-6 md:pl-0 md:pr-0 md:justify-end"
     >
       <AnimatePresence mode="wait">
         {toast && (

@@ -24,7 +24,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
         }`}
       >
         <Icon className="w-5 h-5" />
-        <span className="text-[10px] font-medium tracking-tight leading-none">{label}</span>
+        <span className="text-[11px] font-medium tracking-tight leading-none">{label}</span>
       </button>
     );
   };

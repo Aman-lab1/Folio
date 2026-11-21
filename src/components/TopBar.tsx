@@ -26,7 +26,7 @@ export const TopBar: React.FC<TopBarProps> = ({
   onLockOrSwitch,
 }) => {
   return (
-    <header className="sticky top-0 z-30 border-b border-white/[0.08] bg-[#09090B]/90 backdrop-blur-md">
+    <header className="sticky top-0 z-30 border-b border-white/[0.08] bg-[#09090B]/90 backdrop-blur-md pt-[env(safe-area-inset-top,0px)] pl-[env(safe-area-inset-left,0px)] pr-[env(safe-area-inset-right,0px)]">
       {/* Desktop 3-Zone Top Bar Contract */}
       <div className="hidden md:flex max-w-6xl mx-auto h-16 px-6 items-center justify-between gap-8">
         <button
@@ -45,7 +45,7 @@ export const TopBar: React.FC<TopBarProps> = ({
                 key={item.id}
                 type="button"
                 onClick={() => onChangeTab(item.id)}
-                className={`min-h-[40px] px-1 text-sm font-medium whitespace-nowrap shrink-0 transition-colors border-b-2 ${
+                className={`min-h-[40px] px-1 text-sm sm:text-[15px] font-medium whitespace-nowrap shrink-0 transition-colors border-b-2 ${
                   isActive
                     ? 'border-zinc-100 text-white'
                     : 'border-transparent text-zinc-400 hover:text-zinc-200'
@@ -75,7 +75,7 @@ export const TopBar: React.FC<TopBarProps> = ({
         <button
           type="button"
           onClick={() => onChangeTab('home')}
-          className="font-display text-base font-bold tracking-tight text-zinc-100 whitespace-nowrap shrink-0"
+          className="font-display text-lg font-bold tracking-tight text-zinc-100 whitespace-nowrap shrink-0"
         >
           Folio
         </button>
@@ -85,7 +85,7 @@ export const TopBar: React.FC<TopBarProps> = ({
           <button
             type="button"
             onClick={onLockOrSwitch}
-            className="min-h-[40px] max-w-[160px] flex items-center gap-1.5 px-2.5 rounded-lg text-xs font-medium text-zinc-300 hover:text-white hover:bg-zinc-900 transition-colors"
+            className="min-h-[40px] max-w-[170px] flex items-center gap-1.5 px-2.5 rounded-lg text-[13px] font-medium text-zinc-300 hover:text-white hover:bg-zinc-900 transition-colors"
             title="Switch or lock profile"
           >
             {activeProfile.pinHash && <Lock className="w-3.5 h-3.5 text-zinc-400 shrink-0" />}

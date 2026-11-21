@@ -1,6 +1,7 @@
 export type TransactionType = 'received' | 'spent';
 export type TransactionContext = 'personal' | 'business';
 export type PaymentMode = 'cash' | 'online';
+export type PersonClassification = 'business' | 'personal' | 'both';
 
 export interface Profile {
   id: string;
@@ -29,6 +30,7 @@ export interface Person {
   profileId: string;
   name: string;
   roleNote?: string;
+  classification?: PersonClassification;
   usageCount: number;
   lastUsedAt: string | null;
 }

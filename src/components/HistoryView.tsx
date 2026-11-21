@@ -118,10 +118,10 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
     <div className="space-y-5">
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-zinc-100">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-zinc-100">
             Transaction History
           </h1>
-          <p className="text-xs text-zinc-400 mt-0.5">
+          <p className="text-[13px] sm:text-sm text-zinc-400 mt-0.5">
             Search, filter by person, category, payment mode, or date range
           </p>
         </div>

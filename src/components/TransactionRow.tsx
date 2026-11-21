@@ -49,17 +49,17 @@ export const TransactionRow: React.FC<TransactionRowProps> = ({
 
       <div className="min-w-0 flex-1">
         <div className="flex items-baseline gap-2">
-          <p className="text-sm font-medium text-zinc-100 truncate">
+          <p className="text-[15px] sm:text-base font-medium text-zinc-100 truncate">
             {transaction.categoryNameSnapshot}
           </p>
           {transaction.personNameSnapshot && (
-            <p className="text-xs text-zinc-300 truncate shrink-0 max-w-[140px]">
+            <p className="text-[13px] sm:text-sm text-zinc-300 truncate shrink-0 max-w-[140px]">
               · {transaction.personNameSnapshot}
             </p>
           )}
         </div>
 
-        <p className="mt-0.5 text-xs text-zinc-400 truncate">
+        <p className="mt-0.5 text-[13px] text-zinc-400 truncate">
           {metadataParts.join(' · ')}
           {transaction.notes ? ` · ${transaction.notes}` : ''}
         </p>
@@ -67,13 +67,13 @@ export const TransactionRow: React.FC<TransactionRowProps> = ({
 
       <div className="text-right shrink-0 pl-2">
         <p
-          className={`font-mono-num text-sm font-semibold ${
+          className={`font-mono-num text-[15px] sm:text-base font-semibold ${
             isReceived ? 'text-emerald-400' : 'text-rose-400'
           }`}
         >
           {formatPaise(transaction.amountPaise, { type: transaction.type })}
         </p>
-        <p className="mt-0.5 text-[11px] text-zinc-500">
+        <p className="mt-0.5 text-xs text-zinc-500">
           {isReceived ? 'Received' : 'Spent'}
         </p>
       </div>

@@ -262,6 +262,11 @@ const QuickEntryForm: React.FC<QuickEntryModalProps> = ({
     }
   };
 
+  const isPersonAllowedInContext = (p: Person, ctx: TransactionContext): boolean => {
+    const classification = p.classification ?? 'both';
+    return classification === 'both' || classification === ctx;
+  };
+
   const handleContextChange = (nextContext: TransactionContext) => {
     if (nextContext === context) return;
     setContext(nextContext);
@@ -269,21 +274,35 @@ const QuickEntryForm: React.FC<QuickEntryModalProps> = ({
     if (!nextCats.some((c) => c.id === categoryId)) {
       setCategoryId(nextCats[0]?.id ?? '');
     }
+    if (selectedPersonId) {
+      const currentPerson = people.find((p) => p.id === selectedPersonId);
+      if (currentPerson && !isPersonAllowedInContext(currentPerson, nextContext)) {
+        setSelectedPersonId(null);
+        if (personInput.trim().toLowerCase() === currentPerson.name.toLowerCase()) {
+          setPersonInput('');
+        }
+      }
+    }
   };
+
+  const contextPeople = useMemo(
+    () => people.filter((p) => isPersonAllowedInContext(p, context)),
+    [people, context]
+  );
 
   const frequentPeople = useMemo(() => {
     const q = personInput.trim().toLowerCase();
-    if (!q) return people.slice(0, 6);
-    return people
+    if (!q) return contextPeople.slice(0, 6);
+    return contextPeople
       .filter((p) => p.name.toLowerCase().includes(q))
       .slice(0, 6);
-  }, [people, personInput]);
+  }, [contextPeople, personInput]);
 
   const isExactSavedPerson = useMemo(() => {
     const trimmed = personInput.trim().toLowerCase();
     if (!trimmed) return false;
-    return people.some((p) => p.name.toLowerCase() === trimmed);
-  }, [people, personInput]);
+    return contextPeople.some((p) => p.name.toLowerCase() === trimmed);
+  }, [contextPeople, personInput]);
 
   const handleQuickAddCategory = async () => {
     const trimmed = newCategoryName.trim();
@@ -443,7 +462,7 @@ const QuickEntryForm: React.FC<QuickEntryModalProps> = ({
         <form
           onSubmit={handleSubmit}
           autoComplete="off"
-          className="flex-1 min-h-0 w-full overflow-y-auto overscroll-y-contain px-4 sm:px-5 py-4 space-y-4"
+          className="flex-1 min-h-0 w-full min-w-0 overflow-y-auto overscroll-y-contain px-4 sm:px-5 py-4 space-y-4"
         >
           {/* Huge Amount Input */}
           <div className="w-full min-w-0 rounded-2xl border border-white/[0.08] bg-[#18181D] px-3.5 sm:px-4 py-3.5 focus-within:border-zinc-400 transition-colors">
@@ -477,7 +496,7 @@ const QuickEntryForm: React.FC<QuickEntryModalProps> = ({
           </div>
 
           {/* Type + Context 1-tap switches */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 min-w-0">
             <div className="min-w-0">
               <span className="block text-xs font-medium text-zinc-400 mb-1.5">Type</span>
               <div className="grid grid-cols-2 gap-1 p-1 rounded-xl bg-[#18181D] border border-white/[0.06]">
@@ -653,7 +672,7 @@ const QuickEntryForm: React.FC<QuickEntryModalProps> = ({
               <button
                 type="button"
                 onClick={() => setSaveNewPerson((v) => !v)}
-                className="mt-2 flex items-start sm:items-center gap-2 max-w-full text-left text-xs text-zinc-300 hover:text-white"
+                className="mt-2 flex items-start sm:items-center gap-2 w-full min-w-0 max-w-full text-left text-xs text-zinc-300 hover:text-white"
               >
                 <span
                   className={`mt-0.5 sm:mt-0 w-4 h-4 rounded flex items-center justify-center border shrink-0 ${
@@ -665,7 +684,7 @@ const QuickEntryForm: React.FC<QuickEntryModalProps> = ({
                   {saveNewPerson && <Check className="w-3 h-3 stroke-[3]" />}
                 </span>
                 <UserPlus className="mt-0.5 sm:mt-0 w-3.5 h-3.5 text-zinc-400 shrink-0" />
-                <span className="min-w-0 break-words">
+                <span className="min-w-0 flex-1 [overflow-wrap:anywhere]">
                   Save &ldquo;{personInput.trim()}&rdquo; for quick selection next time
                 </span>
               </button>
@@ -705,7 +724,7 @@ const QuickEntryForm: React.FC<QuickEntryModalProps> = ({
           </div>
 
           {/* Date, Time & Notes */}
-          <div className="grid grid-cols-1 min-[400px]:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 min-[400px]:grid-cols-2 gap-3 min-w-0">
             <div className="min-w-0">
               <label htmlFor="tx-date" className="block text-xs font-medium text-zinc-400 mb-1">
                 Date

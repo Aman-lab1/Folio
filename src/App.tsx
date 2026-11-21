@@ -27,6 +27,7 @@ import {
   BackupPreview,
   Category,
   Person,
+  PersonClassification,
   Profile,
   Transaction,
   TransactionContext,
@@ -464,24 +465,54 @@ export default function App() {
   );
 
   const handleCreatePerson = useCallback(
-    async (name: string, roleNote?: string): Promise<Person> => {
+    async (
+      name: string,
+      roleNote?: string,
+      classification: PersonClassification = 'both'
+    ): Promise<Person> => {
       if (!activeProfile) throw new Error('No active profile.');
       const trimmed = name.trim();
       if (!trimmed) throw new Error('Person name cannot be empty.');
+      const duplicate = people.some(
+        (p) => p.name.trim().toLowerCase() === trimmed.toLowerCase()
+      );
+      if (duplicate) {
+        const msg = 'A person with this name already exists.';
+        showToast(msg, 'error');
+        throw new Error(msg);
+      }
       const person: Person = {
         id: generateId(),
         profileId: activeProfile.id,
         name: trimmed,
         roleNote,
+        classification,
         usageCount: 0,
         lastUsedAt: null,
       };
-      await savePerson(person);
+      try {
+        const saved = await savePerson(person);
+        const ppl = await getPeople(activeProfile.id);
+        setPeople(ppl);
+        return saved;
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : 'Unable to save person.';
+        showToast(msg, 'error');
+        throw err;
+      }
+    },
+    [activeProfile, people, showToast]
+  );
+
+  const handleUpdatePerson = useCallback(
+    async (person: Person) => {
+      if (!activeProfile) return;
+      const saved = await savePerson(person);
       const ppl = await getPeople(activeProfile.id);
       setPeople(ppl);
-      return person;
+      showToast(`Updated "${saved.name}"`);
     },
-    [activeProfile]
+    [activeProfile, showToast]
   );
 
   const handleDeletePerson = useCallback(
@@ -699,7 +730,7 @@ export default function App() {
         }}
       />
 
-      <main className="flex-1 w-full max-w-6xl mx-auto px-4 sm:px-6 pt-5 pb-24 md:pb-12">
+      <main className="flex-1 w-full max-w-6xl mx-auto px-4 sm:px-6 pt-5 pb-[calc(5.5rem+env(safe-area-inset-bottom,0px))] md:pb-12">
         {activeTab === 'home' && (
           <HomeDashboard
             profileName={activeProfile.name}
@@ -763,7 +794,9 @@ export default function App() {
             onCheckCategoryUsage={handleCheckCategoryUsage}
             onDeleteCategory={handleDeleteCategory}
             onCreatePerson={handleCreatePerson}
+            onUpdatePerson={handleUpdatePerson}
             onDeletePerson={handleDeletePerson}
+            onShowToast={showToast}
             onDownloadJsonBackup={handleDownloadJsonBackup}
             onValidateBackupFile={handleValidateBackupFile}
             onRestoreJsonBackup={handleRestoreJsonBackup}

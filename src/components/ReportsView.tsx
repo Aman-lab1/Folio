@@ -86,10 +86,10 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-zinc-100">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-zinc-100">
             Financial Reports
           </h1>
-          <p className="text-xs text-zinc-400 mt-0.5">
+          <p className="text-[13px] sm:text-sm text-zinc-400 mt-0.5">
             Totals are calculated directly from your recorded transactions
           </p>
         </div>

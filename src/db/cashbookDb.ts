@@ -5,6 +5,7 @@ import {
   Category,
   PaymentMode,
   Person,
+  PersonClassification,
   Profile,
   Transaction,
   TransactionContext,
@@ -409,10 +410,24 @@ export async function getPeople(profileId: string): Promise<Person[]> {
 }
 
 export async function savePerson(person: Person): Promise<Person> {
+  const trimmed = person.name.trim();
+  if (!trimmed) throw new Error('Person name cannot be empty.');
   try {
     const db = await getDb();
-    await db.put('people', person);
-    return person;
+    const tx = db.transaction('people', 'readwrite');
+    const store = tx.objectStore('people');
+    const existingPeople = await store.index('by-profile').getAll(person.profileId);
+    const normalized = trimmed.toLowerCase();
+    const duplicate = existingPeople.find(
+      (p) => p.id !== person.id && p.name.trim().toLowerCase() === normalized
+    );
+    if (duplicate) {
+      throw new Error('A person with this name already exists.');
+    }
+    const sanitized: Person = { ...person, name: trimmed };
+    await store.put(sanitized);
+    await tx.done;
+    return sanitized;
   } catch (err) {
     throw formatStorageError(err, 'Unable to save person.');
   }
@@ -527,6 +542,7 @@ export async function saveTransaction(
           id: generateId(),
           profileId: input.profileId,
           name: resolvedPersonName,
+          classification: input.context,
           usageCount: 0,
           lastUsedAt: null,
         };
@@ -823,11 +839,17 @@ export async function validateAndPreviewBackup(
     }
 
     seenPersonIds.add(personId);
+    const rawClass = item.classification;
+    const classification: PersonClassification | undefined =
+      rawClass === 'business' || rawClass === 'personal' || rawClass === 'both'
+        ? rawClass
+        : undefined;
     validatedPeople.push({
       id: personId,
       profileId: backupProfileId,
       name: item.name.trim(),
       roleNote: typeof item.roleNote === 'string' ? item.roleNote : undefined,
+      classification,
       usageCount:
         typeof item.usageCount === 'number' &&
         Number.isFinite(item.usageCount) &&

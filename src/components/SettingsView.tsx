@@ -19,6 +19,7 @@ import {
   BackupPreview,
   Category,
   Person,
+  PersonClassification,
   Profile,
   TransactionContext,
   TransactionType,
@@ -47,8 +48,14 @@ interface SettingsViewProps {
   onToggleCategoryArchive: (categoryId: string, isArchived: boolean) => Promise<void>;
   onCheckCategoryUsage: (categoryId: string) => Promise<number>;
   onDeleteCategory: (categoryId: string) => Promise<void>;
-  onCreatePerson: (name: string, roleNote?: string) => Promise<Person>;
+  onCreatePerson: (
+    name: string,
+    roleNote?: string,
+    classification?: PersonClassification
+  ) => Promise<Person>;
+  onUpdatePerson?: (person: Person) => Promise<void>;
   onDeletePerson: (personId: string) => Promise<void>;
+  onShowToast?: (text: string, tone?: 'success' | 'error') => void;
   onDownloadJsonBackup: () => Promise<void>;
   onValidateBackupFile: (
     file: File,
@@ -80,7 +87,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   onCheckCategoryUsage,
   onDeleteCategory,
   onCreatePerson,
+  onUpdatePerson,
   onDeletePerson,
+  onShowToast,
   onDownloadJsonBackup,
   onValidateBackupFile,
   onRestoreJsonBackup,
@@ -106,6 +115,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
   const [newPersonName, setNewPersonName] = useState('');
   const [newPersonNote, setNewPersonNote] = useState('');
+  const [newPersonClassification, setNewPersonClassification] =
+    useState<PersonClassification>('both');
 
   const [restoreMode, setRestoreMode] = useState<'merge_into_active' | 'new_profile'>(
     'merge_into_active'
@@ -142,6 +153,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   }, [activeProfile.name]);
 
   const notify = (text: string, tone: 'success' | 'error' = 'success') => {
+    if (onShowToast) {
+      onShowToast(text, tone);
+      return;
+    }
     setFeedback({ text, tone });
     window.setTimeout(() => {
       setFeedback((prev) => (prev?.text === text ? null : prev));
@@ -312,12 +327,30 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     const trimmed = newPersonName.trim();
     if (!trimmed) return;
     try {
-      await onCreatePerson(trimmed, newPersonNote.trim() || undefined);
+      await onCreatePerson(
+        trimmed,
+        newPersonNote.trim() || undefined,
+        newPersonClassification
+      );
       setNewPersonName('');
       setNewPersonNote('');
       notify(`Saved "${trimmed}".`);
     } catch (err) {
-      notify(err instanceof Error ? err.message : 'Unable to save person.', 'error');
+      if (!onShowToast) {
+        notify(err instanceof Error ? err.message : 'Unable to save person.', 'error');
+      }
+    }
+  };
+
+  const handleChangePersonClassification = async (
+    person: Person,
+    classification: PersonClassification
+  ) => {
+    if (!onUpdatePerson) return;
+    try {
+      await onUpdatePerson({ ...person, classification });
+    } catch (err) {
+      notify(err instanceof Error ? err.message : 'Unable to update classification.', 'error');
     }
   };
 
@@ -633,10 +666,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-zinc-100">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-zinc-100">
             Settings &amp; Backup
           </h1>
-          <p className="text-xs text-zinc-400 mt-0.5">
+          <p className="text-[13px] sm:text-sm text-zinc-400 mt-0.5">
             Private profile controls, customizable categories, saved people, and local backups
           </p>
         </div>
@@ -1174,6 +1207,31 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 className="min-h-[42px] rounded-xl border border-white/[0.1] bg-[#18181D] px-3 text-xs text-zinc-100 placeholder:text-zinc-500"
               />
             </div>
+            <div className="grid grid-cols-3 gap-1.5 p-1 rounded-xl bg-[#18181D] border border-white/[0.06]">
+              {(
+                [
+                  { id: 'business', label: 'Business' },
+                  { id: 'personal', label: 'Personal' },
+                  { id: 'both', label: 'Both' },
+                ] as const
+              ).map((opt) => {
+                const active = newPersonClassification === opt.id;
+                return (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    onClick={() => setNewPersonClassification(opt.id)}
+                    className={`min-h-[36px] rounded-lg text-xs font-medium transition-colors ${
+                      active
+                        ? 'bg-zinc-100 text-zinc-950'
+                        : 'text-zinc-400 hover:text-zinc-200'
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                );
+              })}
+            </div>
             <button
               type="submit"
               className="w-full min-h-[42px] rounded-xl border border-white/[0.12] bg-[#18181D] text-xs font-medium text-zinc-100 hover:bg-zinc-800 flex items-center justify-center gap-1.5"
@@ -1189,29 +1247,51 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             </p>
           ) : (
             <div className="max-h-72 overflow-y-auto divide-y divide-white/[0.06] border-t border-white/[0.06]">
-              {people.map((person) => (
-                <div
-                  key={person.id}
-                  className="py-2.5 flex items-center justify-between gap-2"
-                >
-                  <div className="min-w-0">
-                    <p className="text-xs font-medium text-zinc-200 truncate">
-                      {person.name}
-                    </p>
-                    {person.roleNote && (
-                      <p className="text-[11px] text-zinc-500 truncate">{person.roleNote}</p>
-                    )}
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => void handleDeletePersonSafe(person.id)}
-                    aria-label={`Remove ${person.name}`}
-                    className="min-h-[36px] min-w-[36px] flex items-center justify-center rounded-lg text-zinc-500 hover:text-rose-400 hover:bg-zinc-800"
+              {people.map((person) => {
+                const currentClass = person.classification ?? 'both';
+                return (
+                  <div
+                    key={person.id}
+                    className="py-2.5 flex items-center justify-between gap-2"
                   >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              ))}
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <p className="text-xs sm:text-[13px] font-medium text-zinc-200 truncate">
+                          {person.name}
+                        </p>
+                      </div>
+                      {person.roleNote && (
+                        <p className="text-[11px] text-zinc-500 truncate">{person.roleNote}</p>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <select
+                        aria-label={`Classification for ${person.name}`}
+                        value={currentClass}
+                        onChange={(e) =>
+                          void handleChangePersonClassification(
+                            person,
+                            e.target.value as PersonClassification
+                          )
+                        }
+                        className="min-h-[34px] rounded-lg border border-white/[0.08] bg-[#18181D] px-2 text-[11px] font-medium text-zinc-300 focus:outline-none focus:border-zinc-400"
+                      >
+                        <option value="business">Business</option>
+                        <option value="personal">Personal</option>
+                        <option value="both">Both</option>
+                      </select>
+                      <button
+                        type="button"
+                        onClick={() => void handleDeletePersonSafe(person.id)}
+                        aria-label={`Remove ${person.name}`}
+                        className="min-h-[36px] min-w-[36px] flex items-center justify-center rounded-lg text-zinc-500 hover:text-rose-400 hover:bg-zinc-800"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           )}
         </section>

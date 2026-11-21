@@ -726,6 +726,30 @@ async function runTests() {
     'Existing Business profile preserved unchanged'
   );
 
+  // 8c. Duplicate person prevention (case-insensitive, trimmed whitespace) & classification preservation
+  const savedPerson = await db.savePerson({
+    id: 'person-dup-1',
+    profileId: profileA.id,
+    name: 'Ramesh Contractor',
+    classification: 'business',
+    usageCount: 0,
+    lastUsedAt: null,
+  });
+  assertEqual(savedPerson.classification, 'business', 'savePerson preserves classification');
+  await assertRejects(
+    () =>
+      db.savePerson({
+        id: 'person-dup-2',
+        profileId: profileA.id,
+        name: '  ramesh contractor  ',
+        classification: 'personal',
+        usageCount: 0,
+        lastUsedAt: null,
+      }),
+    'A person with this name already exists.',
+    'savePerson rejects case-insensitive trimmed duplicate person'
+  );
+
   // 9. Verify resetAllAppData remains distinct & wipes everything when explicitly invoked
   await db.resetAllAppData();
   const finalSnapshot = idbMock.getStoresSnapshot();
