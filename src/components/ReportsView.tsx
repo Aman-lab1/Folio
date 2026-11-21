@@ -170,7 +170,9 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
             </label>
             <input
               id="rep-from"
+              name="folio-report-from"
               type="date"
+              autoComplete="off"
               value={customFrom}
               onChange={(e) => setCustomFrom(e.target.value)}
               className="w-full min-h-[40px] rounded-xl border border-white/[0.1] bg-[#121216] px-3 font-mono-num text-xs text-zinc-100"
@@ -182,7 +184,9 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
             </label>
             <input
               id="rep-to"
+              name="folio-report-to"
               type="date"
+              autoComplete="off"
               value={customTo}
               onChange={(e) => setCustomTo(e.target.value)}
               className="w-full min-h-[40px] rounded-xl border border-white/[0.1] bg-[#121216] px-3 font-mono-num text-xs text-zinc-100"

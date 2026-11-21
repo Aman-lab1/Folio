@@ -267,14 +267,18 @@ export const PinLockScreen: React.FC<PinLockScreenProps> = ({
         </div>
 
         {showCreateForm ? (
-          <form onSubmit={handleCreateSubmit} className="mt-6 space-y-4">
+          <form onSubmit={handleCreateSubmit} autoComplete="off" className="mt-6 space-y-4">
             <div>
               <label htmlFor="profile-name" className="block text-xs font-medium text-zinc-400 mb-1.5">
                 Account Name
               </label>
               <input
                 id="profile-name"
+                name="folio-account-label"
                 type="text"
+                autoComplete="off"
+                autoCorrect="off"
+                spellCheck={false}
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
                 placeholder="e.g., Main Account"
@@ -289,8 +293,10 @@ export const PinLockScreen: React.FC<PinLockScreenProps> = ({
               </label>
               <input
                 id="profile-pin"
+                name="folio-account-pin"
                 type="password"
                 inputMode="numeric"
+                autoComplete="new-password"
                 maxLength={4}
                 value={newPin}
                 onChange={(e) => setNewPin(e.target.value.replace(/\D/g, '').slice(0, 4))}

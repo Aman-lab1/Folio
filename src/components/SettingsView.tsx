@@ -571,8 +571,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               </label>
               <input
                 id="remove-pin-input"
+                name="folio-verify-remove-pin"
                 type="password"
                 inputMode="numeric"
+                autoComplete="new-password"
                 maxLength={4}
                 autoFocus
                 value={removePinInput}
@@ -679,12 +681,16 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             </div>
           </div>
 
-          <form onSubmit={handleRenameProfile} className="flex gap-2">
+          <form onSubmit={handleRenameProfile} autoComplete="off" className="flex gap-2">
             <input
               type="text"
+              name="folio-rename-account"
+              autoComplete="off"
+              autoCorrect="off"
+              spellCheck={false}
               value={profileName}
               onChange={(e) => setProfileName(e.target.value)}
-              className="flex-1 min-h-[42px] rounded-xl border border-white/[0.1] bg-[#18181D] px-3.5 text-sm text-zinc-100 focus:outline-none focus:border-zinc-400"
+              className="flex-1 min-w-0 min-h-[42px] rounded-xl border border-white/[0.1] bg-[#18181D] px-3.5 text-sm text-zinc-100 focus:outline-none focus:border-zinc-400"
             />
             <button
               type="submit"
@@ -718,11 +724,13 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               )}
             </div>
 
-            <form onSubmit={handleSetPin} className="space-y-2.5">
+            <form onSubmit={handleSetPin} autoComplete="off" className="space-y-2.5">
               {activeProfile.pinHash && (
                 <input
                   type="password"
+                  name="folio-current-pin"
                   inputMode="numeric"
+                  autoComplete="new-password"
                   maxLength={4}
                   aria-label="Current 4-digit PIN"
                   value={currentPinInput}
@@ -737,7 +745,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               <div className="flex gap-2">
                 <input
                   type="password"
+                  name="folio-new-pin"
                   inputMode="numeric"
+                  autoComplete="new-password"
                   maxLength={4}
                   aria-label={activeProfile.pinHash ? 'New 4-digit PIN' : 'Set 4-digit PIN'}
                   value={pinInput}
@@ -746,7 +756,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     if (pinError) setPinError('');
                   }}
                   placeholder={activeProfile.pinHash ? 'Enter new 4-digit PIN' : 'Set 4-digit PIN'}
-                  className="flex-1 min-h-[42px] rounded-xl border border-white/[0.1] bg-[#18181D] px-3.5 font-mono-num text-sm tracking-widest text-zinc-100 placeholder:font-sans placeholder:tracking-normal placeholder:text-zinc-500 focus:outline-none focus:border-zinc-400"
+                  className="flex-1 min-w-0 min-h-[42px] rounded-xl border border-white/[0.1] bg-[#18181D] px-3.5 font-mono-num text-sm tracking-widest text-zinc-100 placeholder:font-sans placeholder:tracking-normal placeholder:text-zinc-500 focus:outline-none focus:border-zinc-400"
                 />
                 <button
                   type="submit"
@@ -820,9 +830,13 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               })}
             </div>
 
-            <form onSubmit={handleCreateNewProfile} className="grid grid-cols-1 sm:grid-cols-12 gap-2 pt-1">
+            <form onSubmit={handleCreateNewProfile} autoComplete="off" className="grid grid-cols-1 sm:grid-cols-12 gap-2 pt-1">
               <input
                 type="text"
+                name="folio-new-account-label"
+                autoComplete="off"
+                autoCorrect="off"
+                spellCheck={false}
                 value={newProfileName}
                 onChange={(e) => setNewProfileName(e.target.value)}
                 placeholder="New profile name..."
@@ -830,7 +844,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               />
               <input
                 type="password"
+                name="folio-new-account-pin"
                 inputMode="numeric"
+                autoComplete="new-password"
                 maxLength={4}
                 value={newProfilePin}
                 onChange={(e) =>
@@ -975,7 +991,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             </h2>
           </div>
 
-          <form onSubmit={handleAddCategory} className="space-y-2.5">
+          <form onSubmit={handleAddCategory} autoComplete="off" className="space-y-2.5">
             <div className="grid grid-cols-2 gap-2">
               <select
                 value={newCatType}
@@ -997,10 +1013,14 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             <div className="flex gap-2">
               <input
                 type="text"
+                name="folio-category-label"
+                autoComplete="off"
+                autoCorrect="off"
+                spellCheck={false}
                 value={newCatName}
                 onChange={(e) => setNewCatName(e.target.value)}
                 placeholder="Add new category name..."
-                className="flex-1 min-h-[42px] rounded-xl border border-white/[0.1] bg-[#18181D] px-3 text-xs text-zinc-100 placeholder:text-zinc-500"
+                className="flex-1 min-w-0 min-h-[42px] rounded-xl border border-white/[0.1] bg-[#18181D] px-3 text-xs text-zinc-100 placeholder:text-zinc-500"
               />
               <button
                 type="submit"
@@ -1023,6 +1043,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     <div className="flex-1 flex items-center gap-1.5">
                       <input
                         type="text"
+                        name="folio-edit-category-label"
+                        autoComplete="off"
+                        autoCorrect="off"
+                        spellCheck={false}
                         value={editingCatName}
                         onChange={(e) => setEditingCatName(e.target.value)}
                         onKeyDown={(e) => {
@@ -1127,10 +1151,14 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             Saved People ({people.length})
           </h2>
 
-          <form onSubmit={handleAddPerson} className="space-y-2.5">
+          <form onSubmit={handleAddPerson} autoComplete="off" className="space-y-2.5">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <input
                 type="text"
+                name="folio-saved-party-label"
+                autoComplete="off"
+                autoCorrect="off"
+                spellCheck={false}
                 value={newPersonName}
                 onChange={(e) => setNewPersonName(e.target.value)}
                 placeholder="Person name (e.g. Supervisor A)"
@@ -1138,6 +1166,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               />
               <input
                 type="text"
+                name="folio-saved-party-note"
+                autoComplete="off"
                 value={newPersonNote}
                 onChange={(e) => setNewPersonNote(e.target.value)}
                 placeholder="Role note (optional)"

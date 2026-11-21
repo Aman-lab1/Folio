@@ -155,6 +155,10 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
           <Search className="w-4 h-4 text-zinc-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
           <input
             type="search"
+            name="folio-history-search"
+            autoComplete="off"
+            autoCorrect="off"
+            spellCheck={false}
             value={filter.search}
             onChange={(e) => setFilter((f) => ({ ...f, search: e.target.value }))}
             placeholder="Search notes, person, or category..."
@@ -208,7 +212,9 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
                 </label>
                 <input
                   id="hist-from"
+                  name="folio-history-from"
                   type="date"
+                  autoComplete="off"
                   value={filter.dateFrom}
                   onChange={(e) => setFilter((f) => ({ ...f, dateFrom: e.target.value }))}
                   className="w-full min-h-[40px] rounded-xl border border-white/[0.1] bg-[#18181D] px-3 font-mono-num text-xs text-zinc-100"
@@ -220,7 +226,9 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
                 </label>
                 <input
                   id="hist-to"
+                  name="folio-history-to"
                   type="date"
+                  autoComplete="off"
                   value={filter.dateTo}
                   onChange={(e) => setFilter((f) => ({ ...f, dateTo: e.target.value }))}
                   className="w-full min-h-[40px] rounded-xl border border-white/[0.1] bg-[#18181D] px-3 font-mono-num text-xs text-zinc-100"

@@ -353,28 +353,28 @@ export const QuickEntryModal: React.FC<QuickEntryModalProps> = ({
       {/* Backdrop click close */}
       <div className="absolute inset-0" onClick={onClose} aria-hidden="true" />
 
-      <div className="relative z-10 w-full md:max-w-lg max-h-[92vh] flex flex-col rounded-t-3xl md:rounded-2xl border border-white/[0.1] bg-[#121216] shadow-2xl overflow-hidden">
+      <div className="relative z-10 w-full max-w-full md:max-w-lg max-h-[92dvh] flex flex-col rounded-t-3xl md:rounded-2xl border border-white/[0.1] bg-[#121216] shadow-2xl overflow-hidden">
         {/* Mobile grab handle */}
         <div className="md:hidden w-10 h-1 bg-zinc-700 rounded-full mx-auto mt-2.5 shrink-0" />
 
         {/* Header */}
-        <div className="flex items-center justify-between px-5 pt-3 pb-3 border-b border-white/[0.08] shrink-0">
-          <h2 id="quick-entry-title" className="text-base font-semibold text-zinc-100">
+        <div className="flex items-center justify-between gap-2 px-4 sm:px-5 pt-3 pb-3 border-b border-white/[0.08] shrink-0">
+          <h2 id="quick-entry-title" className="min-w-0 truncate text-base font-semibold text-zinc-100">
             {editingTransaction ? 'Edit Entry' : 'Quick Entry'}
           </h2>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1 shrink-0">
             {editingTransaction && (
               <button
                 type="button"
                 onClick={handleDelete}
                 disabled={isSaving}
-                className={`min-h-[40px] px-3 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-colors ${
+                className={`min-h-[40px] px-3 rounded-lg text-xs font-medium flex items-center gap-1.5 whitespace-nowrap transition-colors ${
                   confirmDelete
                     ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40'
                     : 'text-zinc-400 hover:text-rose-400 hover:bg-zinc-800'
                 }`}
               >
-                <Trash2 className="w-3.5 h-3.5" />
+                <Trash2 className="w-3.5 h-3.5 shrink-0" />
                 <span>{confirmDelete ? 'Tap to Confirm' : 'Delete'}</span>
               </button>
             )}
@@ -389,21 +389,30 @@ export const QuickEntryModal: React.FC<QuickEntryModalProps> = ({
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+        <form
+          onSubmit={handleSubmit}
+          autoComplete="off"
+          className="flex-1 min-h-0 w-full overflow-y-auto overscroll-y-contain px-4 sm:px-5 py-4 space-y-4"
+        >
           {/* Huge Amount Input */}
-          <div className="rounded-2xl border border-white/[0.08] bg-[#18181D] px-4 py-3.5 focus-within:border-zinc-400 transition-colors">
+          <div className="w-full min-w-0 rounded-2xl border border-white/[0.08] bg-[#18181D] px-3.5 sm:px-4 py-3.5 focus-within:border-zinc-400 transition-colors">
             <label htmlFor="tx-amount" className="block text-xs font-medium text-zinc-400 mb-1">
               Amount (INR)
             </label>
-            <div className="flex items-baseline gap-2">
-              <span className="font-mono-num text-2xl font-semibold text-zinc-400 select-none">
+            <div className="flex items-baseline gap-2 min-w-0">
+              <span className="font-mono-num text-2xl font-semibold text-zinc-400 select-none shrink-0">
                 ₹
               </span>
               <input
                 ref={amountInputRef}
                 id="tx-amount"
+                name="folio-entry-amount"
                 type="text"
                 inputMode="decimal"
+                autoComplete="off"
+                autoCorrect="off"
+                autoCapitalize="off"
+                spellCheck={false}
                 value={amountStr}
                 onChange={(e) => {
                   const v = e.target.value.replace(/[^0-9.]/g, '');
@@ -411,20 +420,20 @@ export const QuickEntryModal: React.FC<QuickEntryModalProps> = ({
                   if (error) setError('');
                 }}
                 placeholder="0"
-                className="w-full bg-transparent font-mono-num text-3xl font-bold text-zinc-100 placeholder:text-zinc-600 focus:outline-none"
+                className="min-w-0 flex-1 w-full bg-transparent font-mono-num text-3xl font-bold text-zinc-100 placeholder:text-zinc-600 focus:outline-none"
               />
             </div>
           </div>
 
           {/* Type + Context 1-tap switches */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="min-w-0">
               <span className="block text-xs font-medium text-zinc-400 mb-1.5">Type</span>
               <div className="grid grid-cols-2 gap-1 p-1 rounded-xl bg-[#18181D] border border-white/[0.06]">
                 <button
                   type="button"
                   onClick={() => setType('spent')}
-                  className={`min-h-[40px] rounded-lg text-xs font-semibold transition-colors whitespace-nowrap ${
+                  className={`min-w-0 min-h-[40px] px-2 rounded-lg text-xs font-semibold transition-colors truncate ${
                     type === 'spent'
                       ? 'bg-rose-500/15 text-rose-300 border border-rose-500/30'
                       : 'text-zinc-400 hover:text-zinc-200'
@@ -435,7 +444,7 @@ export const QuickEntryModal: React.FC<QuickEntryModalProps> = ({
                 <button
                   type="button"
                   onClick={() => setType('received')}
-                  className={`min-h-[40px] rounded-lg text-xs font-semibold transition-colors whitespace-nowrap ${
+                  className={`min-w-0 min-h-[40px] px-2 rounded-lg text-xs font-semibold transition-colors truncate ${
                     type === 'received'
                       ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30'
                       : 'text-zinc-400 hover:text-zinc-200'
@@ -446,13 +455,13 @@ export const QuickEntryModal: React.FC<QuickEntryModalProps> = ({
               </div>
             </div>
 
-            <div>
+            <div className="min-w-0">
               <span className="block text-xs font-medium text-zinc-400 mb-1.5">Context</span>
               <div className="grid grid-cols-2 gap-1 p-1 rounded-xl bg-[#18181D] border border-white/[0.06]">
                 <button
                   type="button"
                   onClick={() => setContext('business')}
-                  className={`min-h-[40px] rounded-lg text-xs font-semibold transition-colors whitespace-nowrap ${
+                  className={`min-w-0 min-h-[40px] px-2 rounded-lg text-xs font-semibold transition-colors truncate ${
                     context === 'business'
                       ? 'bg-zinc-100 text-zinc-950'
                       : 'text-zinc-400 hover:text-zinc-200'
@@ -463,7 +472,7 @@ export const QuickEntryModal: React.FC<QuickEntryModalProps> = ({
                 <button
                   type="button"
                   onClick={() => setContext('personal')}
-                  className={`min-h-[40px] rounded-lg text-xs font-semibold transition-colors whitespace-nowrap ${
+                  className={`min-w-0 min-h-[40px] px-2 rounded-lg text-xs font-semibold transition-colors truncate ${
                     context === 'personal'
                       ? 'bg-zinc-100 text-zinc-950'
                       : 'text-zinc-400 hover:text-zinc-200'
@@ -476,13 +485,13 @@ export const QuickEntryModal: React.FC<QuickEntryModalProps> = ({
           </div>
 
           {/* Categories Quick-Pick */}
-          <div>
-            <div className="flex items-center justify-between mb-1.5">
+          <div className="min-w-0">
+            <div className="flex items-center justify-between gap-2 mb-1.5">
               <span className="text-xs font-medium text-zinc-400">Category</span>
               <button
                 type="button"
                 onClick={() => setAddingCategory((v) => !v)}
-                className="text-xs font-medium text-zinc-300 hover:text-white flex items-center gap-1"
+                className="text-xs font-medium text-zinc-300 hover:text-white flex items-center gap-1 whitespace-nowrap shrink-0"
               >
                 <Plus className="w-3.5 h-3.5" />
                 <span>{addingCategory ? 'Cancel' : 'New Category'}</span>
@@ -490,13 +499,17 @@ export const QuickEntryModal: React.FC<QuickEntryModalProps> = ({
             </div>
 
             {addingCategory && (
-              <div className="mb-2.5 flex items-center gap-2">
+              <div className="mb-2.5 flex items-center gap-2 min-w-0">
                 <input
                   type="text"
+                  name="folio-new-category"
+                  autoComplete="off"
+                  autoCorrect="off"
+                  spellCheck={false}
                   value={newCategoryName}
                   onChange={(e) => setNewCategoryName(e.target.value)}
                   placeholder={`New ${context} ${type} category...`}
-                  className="flex-1 min-h-[42px] rounded-xl border border-white/[0.1] bg-[#18181D] px-3 text-sm text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:border-zinc-400"
+                  className="min-w-0 flex-1 min-h-[42px] rounded-xl border border-white/[0.1] bg-[#18181D] px-3 text-sm text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:border-zinc-400"
                 />
                 <button
                   type="button"
@@ -508,7 +521,7 @@ export const QuickEntryModal: React.FC<QuickEntryModalProps> = ({
               </div>
             )}
 
-            <div className="flex flex-wrap gap-1.5">
+            <div className="flex flex-wrap gap-1.5 min-w-0">
               {matchingCategories.map((cat) => {
                 const selected = cat.id === categoryId;
                 return (
@@ -516,7 +529,7 @@ export const QuickEntryModal: React.FC<QuickEntryModalProps> = ({
                     key={cat.id}
                     type="button"
                     onClick={() => setCategoryId(cat.id)}
-                    className={`min-h-[38px] px-3 py-1.5 rounded-xl text-xs font-medium border transition-colors whitespace-nowrap ${
+                    className={`min-h-[38px] max-w-full px-3 py-1.5 rounded-xl text-xs font-medium border transition-colors truncate ${
                       selected
                         ? 'border-zinc-200 bg-zinc-100 text-zinc-950'
                         : 'border-white/[0.08] bg-[#18181D] text-zinc-300 hover:bg-zinc-800'
@@ -536,13 +549,13 @@ export const QuickEntryModal: React.FC<QuickEntryModalProps> = ({
           </div>
 
           {/* Payment Mode */}
-          <div>
+          <div className="min-w-0">
             <span className="block text-xs font-medium text-zinc-400 mb-1.5">Payment Mode</span>
             <div className="grid grid-cols-2 gap-1 p-1 rounded-xl bg-[#18181D] border border-white/[0.06]">
               <button
                 type="button"
                 onClick={() => setPaymentMode('cash')}
-                className={`min-h-[40px] rounded-lg text-xs font-semibold transition-colors ${
+                className={`min-w-0 min-h-[40px] px-2 rounded-lg text-xs font-semibold transition-colors truncate ${
                   paymentMode === 'cash'
                     ? 'bg-zinc-100 text-zinc-950'
                     : 'text-zinc-400 hover:text-zinc-200'
@@ -553,7 +566,7 @@ export const QuickEntryModal: React.FC<QuickEntryModalProps> = ({
               <button
                 type="button"
                 onClick={() => setPaymentMode('online')}
-                className={`min-h-[40px] rounded-lg text-xs font-semibold transition-colors ${
+                className={`min-w-0 min-h-[40px] px-2 rounded-lg text-xs font-semibold transition-colors truncate ${
                   paymentMode === 'online'
                     ? 'bg-zinc-100 text-zinc-950'
                     : 'text-zinc-400 hover:text-zinc-200'
@@ -565,30 +578,34 @@ export const QuickEntryModal: React.FC<QuickEntryModalProps> = ({
           </div>
 
           {/* Person / Entity (Optional) */}
-          <div>
+          <div className="min-w-0">
             <label htmlFor="tx-person" className="block text-xs font-medium text-zinc-400 mb-1.5">
               Person / Party (Optional)
             </label>
             <input
               id="tx-person"
+              name="folio-entry-party"
               type="text"
+              autoComplete="off"
+              autoCorrect="off"
+              spellCheck={false}
               value={personInput}
               onChange={(e) => {
                 setPersonInput(e.target.value);
                 setSelectedPersonId(null);
               }}
               placeholder="e.g. Supervisor A, Supplier, Labourer..."
-              className="w-full min-h-[44px] rounded-xl border border-white/[0.1] bg-[#18181D] px-3.5 text-sm text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:border-zinc-400"
+              className="w-full min-w-0 min-h-[44px] rounded-xl border border-white/[0.1] bg-[#18181D] px-3.5 text-sm text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:border-zinc-400"
             />
 
             {personInput.trim() && !isExactSavedPerson && (
               <button
                 type="button"
                 onClick={() => setSaveNewPerson((v) => !v)}
-                className="mt-2 flex items-center gap-2 text-xs text-zinc-300 hover:text-white"
+                className="mt-2 flex items-start sm:items-center gap-2 max-w-full text-left text-xs text-zinc-300 hover:text-white"
               >
                 <span
-                  className={`w-4 h-4 rounded flex items-center justify-center border ${
+                  className={`mt-0.5 sm:mt-0 w-4 h-4 rounded flex items-center justify-center border shrink-0 ${
                     saveNewPerson
                       ? 'bg-zinc-100 border-zinc-100 text-zinc-950'
                       : 'border-zinc-600'
@@ -596,13 +613,15 @@ export const QuickEntryModal: React.FC<QuickEntryModalProps> = ({
                 >
                   {saveNewPerson && <Check className="w-3 h-3 stroke-[3]" />}
                 </span>
-                <UserPlus className="w-3.5 h-3.5 text-zinc-400" />
-                <span>Save &ldquo;{personInput.trim()}&rdquo; for quick selection next time</span>
+                <UserPlus className="mt-0.5 sm:mt-0 w-3.5 h-3.5 text-zinc-400 shrink-0" />
+                <span className="min-w-0 break-words">
+                  Save &ldquo;{personInput.trim()}&rdquo; for quick selection next time
+                </span>
               </button>
             )}
 
             {frequentPeople.length > 0 && (
-              <div className="mt-2 flex flex-wrap gap-1.5">
+              <div className="mt-2 flex flex-wrap gap-1.5 min-w-0">
                 {frequentPeople.map((p) => {
                   const active =
                     selectedPersonId === p.id ||
@@ -620,7 +639,7 @@ export const QuickEntryModal: React.FC<QuickEntryModalProps> = ({
                           setPersonInput(p.name);
                         }
                       }}
-                      className={`min-h-[34px] px-2.5 py-1 rounded-lg text-xs font-medium border transition-colors ${
+                      className={`min-h-[34px] max-w-full px-2.5 py-1 rounded-lg text-xs font-medium border transition-colors truncate ${
                         active
                           ? 'border-zinc-300 bg-zinc-800 text-white'
                           : 'border-white/[0.06] bg-[#18181D] text-zinc-400 hover:text-zinc-200'
@@ -635,50 +654,56 @@ export const QuickEntryModal: React.FC<QuickEntryModalProps> = ({
           </div>
 
           {/* Date, Time & Notes */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
+          <div className="grid grid-cols-1 min-[400px]:grid-cols-2 gap-3">
+            <div className="min-w-0">
               <label htmlFor="tx-date" className="block text-xs font-medium text-zinc-400 mb-1">
                 Date
               </label>
               <input
                 id="tx-date"
+                name="folio-entry-date"
                 type="date"
+                autoComplete="off"
                 value={date}
                 onChange={(e) => {
                   setDate(e.target.value);
                   if (error) setError('');
                 }}
-                className="w-full min-h-[42px] rounded-xl border border-white/[0.1] bg-[#18181D] px-3 font-mono-num text-xs text-zinc-100 focus:outline-none focus:border-zinc-400"
+                className="block w-full min-w-0 max-w-full min-h-[42px] rounded-xl border border-white/[0.1] bg-[#18181D] px-3 font-mono-num text-xs text-zinc-100 focus:outline-none focus:border-zinc-400"
               />
             </div>
-            <div>
+            <div className="min-w-0">
               <label htmlFor="tx-time" className="block text-xs font-medium text-zinc-400 mb-1">
                 Time
               </label>
               <input
                 id="tx-time"
+                name="folio-entry-time"
                 type="time"
+                autoComplete="off"
                 value={time}
                 onChange={(e) => {
                   setTime(e.target.value);
                   if (error) setError('');
                 }}
-                className="w-full min-h-[42px] rounded-xl border border-white/[0.1] bg-[#18181D] px-3 font-mono-num text-xs text-zinc-100 focus:outline-none focus:border-zinc-400"
+                className="block w-full min-w-0 max-w-full min-h-[42px] rounded-xl border border-white/[0.1] bg-[#18181D] px-3 font-mono-num text-xs text-zinc-100 focus:outline-none focus:border-zinc-400"
               />
             </div>
           </div>
 
-          <div>
+          <div className="min-w-0">
             <label htmlFor="tx-notes" className="block text-xs font-medium text-zinc-400 mb-1">
               Notes (Optional)
             </label>
             <input
               id="tx-notes"
+              name="folio-entry-notes"
               type="text"
+              autoComplete="off"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Short description if helpful..."
-              className="w-full min-h-[42px] rounded-xl border border-white/[0.1] bg-[#18181D] px-3.5 text-sm text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:border-zinc-400"
+              className="w-full min-w-0 min-h-[42px] rounded-xl border border-white/[0.1] bg-[#18181D] px-3.5 text-sm text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:border-zinc-400"
             />
           </div>
 

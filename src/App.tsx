@@ -43,6 +43,7 @@ import { SettingsView } from './components/SettingsView';
 import { QuickEntryDraft, QuickEntryModal } from './components/QuickEntryModal';
 import { PinLockScreen } from './components/PinLockScreen';
 import { OfflineIndicator } from './components/OfflineIndicator';
+import { ToastMessage, ToastNotification } from './components/ToastNotification';
 
 const LAST_PROFILE_KEY = 'cashbook_last_profile_id';
 export const MAX_BACKUP_FILE_BYTES = 25 * 1024 * 1024;
@@ -72,17 +73,38 @@ export default function App() {
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [quickEntryDraft, setQuickEntryDraft] = useState<QuickEntryDraft | null>(null);
 
-  const [toast, setToast] = useState<{ text: string; tone: 'success' | 'error' } | null>(
-    null
-  );
+  const [toast, setToast] = useState<ToastMessage | null>(null);
   const lastActivityRef = useRef<number>(Date.now());
   const profileLoadSeqRef = useRef(0);
+  const toastSeqRef = useRef(0);
+  const toastTimerRef = useRef<number | null>(null);
+
+  const dismissToast = useCallback(() => {
+    if (toastTimerRef.current !== null) {
+      window.clearTimeout(toastTimerRef.current);
+      toastTimerRef.current = null;
+    }
+    setToast(null);
+  }, []);
 
   const showToast = useCallback((text: string, tone: 'success' | 'error' = 'success') => {
-    setToast({ text, tone });
-    window.setTimeout(() => {
-      setToast((prev) => (prev?.text === text ? null : prev));
-    }, 3200);
+    if (toastTimerRef.current !== null) {
+      window.clearTimeout(toastTimerRef.current);
+    }
+    const id = ++toastSeqRef.current;
+    setToast({ id, text, tone });
+    toastTimerRef.current = window.setTimeout(() => {
+      setToast((prev) => (prev?.id === id ? null : prev));
+      toastTimerRef.current = null;
+    }, tone === 'error' ? 3800 : 2800);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (toastTimerRef.current !== null) {
+        window.clearTimeout(toastTimerRef.current);
+      }
+    };
   }, []);
 
   const loadProfileData = useCallback(async (profileId: string): Promise<boolean> => {
@@ -283,7 +305,7 @@ export default function App() {
       if (!loaded) return;
       lastActivityRef.current = Date.now();
       setUnlockedProfileId(created.id);
-      showToast(`Folio "${created.name}" ready`);
+      showToast(`Account "${created.name}" created`);
     },
     [loadProfileData, showToast]
   );
@@ -652,6 +674,7 @@ export default function App() {
           }}
         />
         <OfflineIndicator />
+        <ToastNotification toast={toast} onDismiss={dismissToast} />
       </>
     );
   }
@@ -782,20 +805,7 @@ export default function App() {
       />
 
       <OfflineIndicator />
-
-      {toast && (
-        <div
-          role={toast.tone === 'error' ? 'alert' : 'status'}
-          aria-live="polite"
-          className={`fixed bottom-20 md:bottom-6 right-4 z-50 rounded-xl border px-4 py-2.5 text-xs font-medium shadow-xl ${
-            toast.tone === 'error'
-              ? 'border-rose-500/40 bg-rose-950/90 text-rose-200'
-              : 'border-white/15 bg-[#18181D] text-zinc-100'
-          }`}
-        >
-          {toast.text}
-        </div>
-      )}
+      <ToastNotification toast={toast} onDismiss={dismissToast} />
     </div>
   );
 }
