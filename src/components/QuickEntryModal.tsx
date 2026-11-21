@@ -739,7 +739,7 @@ const QuickEntryForm: React.FC<QuickEntryModalProps> = ({
                   setDate(e.target.value);
                   if (error) setError('');
                 }}
-                className="box-border block w-full min-w-0 max-w-full min-h-[46px] rounded-xl border border-white/[0.1] bg-[#18181D] px-3 font-mono-num text-base md:text-sm text-zinc-100 focus:outline-none focus:border-zinc-400"
+                className="box-border w-full min-w-0 max-w-full min-h-[46px] rounded-xl border border-white/[0.1] bg-[#18181D] px-3.5 font-mono-num text-base md:text-sm text-zinc-100 focus:outline-none focus:border-zinc-400"
               />
             </div>
             <div className="min-w-0 order-1 md:order-2">
@@ -756,7 +756,7 @@ const QuickEntryForm: React.FC<QuickEntryModalProps> = ({
                   setTime(e.target.value);
                   if (error) setError('');
                 }}
-                className="box-border block w-full min-w-0 max-w-full min-h-[46px] rounded-xl border border-white/[0.1] bg-[#18181D] px-3 font-mono-num text-base md:text-sm text-zinc-100 focus:outline-none focus:border-zinc-400"
+                className="box-border w-full min-w-0 max-w-full min-h-[46px] rounded-xl border border-white/[0.1] bg-[#18181D] px-3.5 font-mono-num text-base md:text-sm text-zinc-100 focus:outline-none focus:border-zinc-400"
               />
             </div>
           </div>
