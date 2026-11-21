@@ -723,9 +723,9 @@ const QuickEntryForm: React.FC<QuickEntryModalProps> = ({
             )}
           </div>
 
-          {/* Date, Time & Notes */}
-          <div className="grid grid-cols-1 min-[400px]:grid-cols-2 gap-3 min-w-0">
-            <div className="min-w-0">
+          {/* Time & Date (stacked Time-first on mobile, side-by-side Date/Time on tablet & desktop) */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 min-w-0">
+            <div className="min-w-0 order-2 md:order-1">
               <label htmlFor="tx-date" className="block text-xs font-medium text-zinc-400 mb-1">
                 Date
               </label>
@@ -739,10 +739,10 @@ const QuickEntryForm: React.FC<QuickEntryModalProps> = ({
                   setDate(e.target.value);
                   if (error) setError('');
                 }}
-                className="block w-full min-w-0 max-w-full min-h-[42px] rounded-xl border border-white/[0.1] bg-[#18181D] px-3 font-mono-num text-xs text-zinc-100 focus:outline-none focus:border-zinc-400"
+                className="block w-full min-w-0 max-w-full min-h-[44px] rounded-xl border border-white/[0.1] bg-[#18181D] px-3 font-mono-num text-sm md:text-xs text-zinc-100 focus:outline-none focus:border-zinc-400"
               />
             </div>
-            <div className="min-w-0">
+            <div className="min-w-0 order-1 md:order-2">
               <label htmlFor="tx-time" className="block text-xs font-medium text-zinc-400 mb-1">
                 Time
               </label>
@@ -756,7 +756,7 @@ const QuickEntryForm: React.FC<QuickEntryModalProps> = ({
                   setTime(e.target.value);
                   if (error) setError('');
                 }}
-                className="block w-full min-w-0 max-w-full min-h-[42px] rounded-xl border border-white/[0.1] bg-[#18181D] px-3 font-mono-num text-xs text-zinc-100 focus:outline-none focus:border-zinc-400"
+                className="block w-full min-w-0 max-w-full min-h-[44px] rounded-xl border border-white/[0.1] bg-[#18181D] px-3 font-mono-num text-sm md:text-xs text-zinc-100 focus:outline-none focus:border-zinc-400"
               />
             </div>
           </div>

@@ -221,6 +221,16 @@ function runTests() {
     'ToastNotification positions top-right on desktop and below safe-area on mobile'
   );
 
+  // QuickEntryModal Time-first / Date-second stacked mobile layout
+  assert(
+    freshHtml.includes('grid-cols-1 md:grid-cols-2 gap-3 min-w-0'),
+    'Time and Date stack full-width on mobile and sit side-by-side on md+'
+  );
+  assert(
+    freshHtml.includes('order-1 md:order-2') && freshHtml.includes('order-2 md:order-1'),
+    'Time renders first on mobile and Date renders below Time'
+  );
+
   console.log('ALL_POST_QA_VOL2_TESTS_PASSED');
 }
 

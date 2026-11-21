@@ -59,6 +59,15 @@
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
+/* Prevent iOS Safari automatic focus zoom on form controls while keeping desktop sizes unchanged */
+@media (max-width: 767px) {
+  input:not([type="file"]):not([type="checkbox"]):not([type="radio"]):not(.text-3xl):not(.text-2xl):not(.text-xl):not(.text-lg),
+  textarea,
+  select {
+    font-size: 16px;
+  }
+}
+
 /* Clean custom dark scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
